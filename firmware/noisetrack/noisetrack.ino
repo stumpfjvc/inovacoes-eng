@@ -11,9 +11,12 @@
 #include "buzzer.h"
 #include "audio.h"
 #include "tarefa_audio.h"
+#include "armazenamento.h"
+#include "comandos_serial.h"
 #include "teste_nivel_db.h"
 #include "teste_regra.h"
 #include "teste_tarefa.h"
+#include "teste_prefs.h"
 
 // De quanto em quanto tempo o loop() olha o estado publicado pela tarefa.
 // 25 ms é bem menos que uma janela (125 ms), então nenhuma janela passa batida.
@@ -87,6 +90,14 @@ void setup() {
   if (!tarefa_audio_iniciar()) {
     Serial.println("[tarefa] ERRO: nao foi possivel criar a tarefa de audio");
   }
+
+  // Limite e X guardados na flash (ou os padrões) vão para a tarefa.
+  armazenamento_iniciar();
+#if TESTE_PREFS
+  teste_prefs_rodar();      // grava valores de teste e restaura os originais
+#endif
+
+  comandos_serial_iniciar();
   teste_tarefa_iniciar(millis());
 }
 
@@ -100,5 +111,6 @@ void loop() {
   }
 
   imprimirEstado(agora);
+  comandos_serial_atualizar();   // pode gravar na flash: por isso fica aqui, e não na tarefa
   teste_tarefa_verificar(agora);
 }

@@ -110,3 +110,13 @@ constexpr uint32_t FALHAS_ATE_SEM_SINAL = 5;
 // Autoteste da tarefa: depois de 3 s, confere se as janelas estão avançando
 // (cerca de 8 por segundo) e mostra quanto sobrou da pilha.
 #define TESTE_TAREFA 1
+
+// ================== MEMÓRIA (Parte 8) ==================
+// Faixa aceita para os ajustes de calibração guardados (Parte 11).
+constexpr float OFFSET_CAL_MIN_DB = -20.0f;
+constexpr float OFFSET_CAL_MAX_DB = 20.0f;
+
+// Autoteste da memória no setup e comandos "limite N" e "x N" no Serial
+// (só na fonte simulada). O autoteste grava na flash a cada partida:
+// desligar (0) no aparelho instalado.
+#define TESTE_PREFS 1
