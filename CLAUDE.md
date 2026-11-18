@@ -7,8 +7,8 @@ servida pelo próprio ESP32.
 ## Regras
 - Uma branch por parte, criada a partir da `main`. O firmware fica só em
   `firmware/noisetrack/`.
-- Não alterar `script.ino`, `index.html`, `docs/` nem o `diagram.json` da raiz
-  (simulação antiga).
+- A simulação antiga fica em `simulacao-antiga/`; não usar como base do firmware.
+- Não alterar `docs/` sem o usuário pedir.
 - Um commit por parte. Antes de cada commit, rodar `git status` e `git diff`.
 - Sem `git push` sem o usuário pedir.
 - Explicar em palavras simples: o usuário conhece Java, não C++.
