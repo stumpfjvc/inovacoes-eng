@@ -9,12 +9,14 @@
 #include "leds.h"
 #include "buzzer.h"
 #include "audio.h"
+#include "nivel_db.h"
+#include "teste_nivel_db.h"
 
 static uint32_t tUltimoBatimento = 0;
 
 #if DEBUG_AUDIO
-// Teste da Parte 4: lê uma janela a cada JANELA_MS e imprime o RMS BRUTO de
-// cada canal (sem dB; isso é a Parte 5). Remover na Parte 7.
+// Teste: lê uma janela a cada JANELA_MS e imprime o nível em dB de cada canal
+// e o combinado. Remover na Parte 7.
 static int32_t janelaA[AMOSTRAS_POR_JANELA];
 #if NUM_MICROFONES == 2
 static int32_t  janelaB[AMOSTRAS_POR_JANELA];
@@ -24,14 +26,10 @@ static int32_t* const ptrJanelaB = nullptr;   // com 1 microfone, não há canal
 #endif
 static uint32_t tUltimaJanela = 0;
 
-// RMS = raiz da média dos quadrados das amostras.
-static double rmsBruto(const int32_t* amostras, size_t n) {
-  uint64_t soma = 0;   // cabe com folga: 2000 x (2^23)^2 < 2^63
-  for (size_t i = 0; i < n; i++) {
-    const int64_t a = amostras[i];
-    soma += (uint64_t)(a * a);
-  }
-  return sqrt((double)soma / n);
+// Escreve "xx.x dB" ou "--" (canal sem sinal ou ausente) em "texto".
+static void formatarDb(char* texto, size_t tamanho, float db, bool valido) {
+  if (valido) snprintf(texto, tamanho, "%.1f dB", db);
+  else        snprintf(texto, tamanho, "--");
 }
 
 static void depurarAudio(uint32_t agora) {
@@ -42,13 +40,14 @@ static void depurarAudio(uint32_t agora) {
     Serial.println("[audio] janela descartada");
     return;
   }
-#if NUM_MICROFONES == 2
-  Serial.printf("[audio] RMS A = %.0f | RMS B = %.0f\n",
-                rmsBruto(janelaA, AMOSTRAS_POR_JANELA),
-                rmsBruto(janelaB, AMOSTRAS_POR_JANELA));
-#else
-  Serial.printf("[audio] RMS A = %.0f\n", rmsBruto(janelaA, AMOSTRAS_POR_JANELA));
-#endif
+  const NivelDb nivel = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA);
+
+  char textoA[16], textoB[16], textoComb[16];
+  formatarDb(textoA, sizeof(textoA), nivel.dbA, nivel.validoA);
+  formatarDb(textoB, sizeof(textoB), nivel.dbB, nivel.validoB);
+  formatarDb(textoComb, sizeof(textoComb), nivel.dbCombinado, nivel.validoCombinado);
+  Serial.printf("[nivel] A = %s | B = %s | comb = %s%s\n", textoA, textoB, textoComb,
+                nivel.canalDescartado ? " (canal sem sinal fora da conta)" : "");
 }
 #endif
 
@@ -82,6 +81,10 @@ void setup() {
 
   buzzer_iniciar();   // primeiro, para o buzzer não apitar durante o resto do setup
   leds_iniciar();
+
+#if TESTE_NIVEL_DB
+  teste_nivel_db_rodar();   // só imprime PASS/FAIL; não trava se falhar
+#endif
 
   if (!audio_iniciar()) {
     Serial.println("[audio] ERRO: fonte de audio nao iniciou");

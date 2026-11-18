@@ -127,7 +127,8 @@ Nenhum áudio é gravado, armazenado ou enviado.
 | Compra dos componentes | Pronto |
 | Documento de ideia e quadro Kanban (`docs/`) | Pronto |
 | Montagem do circuito | Em desenvolvimento |
-| Firmware: leitura do microfone e cálculo em dB | Pendente |
+| Firmware: leitura dos microfones (2 INMP441 por I2S) | Pronto |
+| Firmware: cálculo do nível em dB | Em desenvolvimento |
 | Firmware: regra do tempo X contínuo | Pendente |
 | Firmware: controle do módulo WS2812 (biblioteca NeoPixel ou FastLED) | Pendente |
 | Firmware: buzzer e alerta local sem Wi-Fi | Pendente |

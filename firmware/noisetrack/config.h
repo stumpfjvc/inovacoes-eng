@@ -30,6 +30,30 @@ constexpr float MIC_REF_DB_SPL         = 94.0f;
 constexpr float MIC_SENSIBILIDADE_DBFS = -26.0f;
 constexpr float MIC_FUNDO_ESCALA       = 8388607.0f;   // maior valor de 24 bits (2^23 - 1)
 
+// ================== NÍVEL EM dB (Parte 5) ==================
+// dB SPL = dBFS + OFFSET_BASE_DB + ajuste do microfone.
+// OFFSET_BASE_DB = 94 - (-26) = 120: o som de 94 dB SPL que dá -26 dBFS.
+constexpr float OFFSET_BASE_DB = MIC_REF_DB_SPL - MIC_SENSIBILIDADE_DBFS;
+
+// Ajuste fino de cada microfone, em dB, somado ao nível dele.
+// Fica em 0 até a calibração na placa (Parte 11): com um decibelímetro ao lado,
+// se o mic A mostrar 3 dB a menos que o aparelho, OFFSET_CAL_MIC_A_DB = 3.0f.
+constexpr float OFFSET_CAL_MIC_A_DB = 0.0f;
+constexpr float OFFSET_CAL_MIC_B_DB = 0.0f;
+
+// Faixa do resultado. Silêncio absoluto (RMS = 0) vira DB_PISO, nunca -infinito.
+constexpr float DB_PISO = 20.0f;
+constexpr float DB_TETO = 130.0f;
+
+// Como juntar os dois microfones num número só.
+#define COMBINACAO_MEDIA_ENERGIA 0   // média das energias (padrão do grupo)
+#define COMBINACAO_MAIOR         1   // o maior dos dois níveis
+#define COMBINACAO_MICS COMBINACAO_MEDIA_ENERGIA
+static_assert(COMBINACAO_MICS == 0 || COMBINACAO_MICS == 1, "COMBINACAO_MICS deve ser 0 ou 1");
+
+// Autoteste das contas de dB, roda uma vez no setup e imprime PASS/FAIL.
+#define TESTE_NIVEL_DB 1
+
 // Módulo WS2812 (dados)
 constexpr uint8_t PINO_LEDS = 4;
 constexpr uint8_t NUM_LEDS    = 4;
@@ -63,7 +87,7 @@ static_assert((FREQ_AMOSTRAGEM_HZ * JANELA_MS) % 1000 == 0,
 // Amostras de cada canal numa janela: 16000 * 125 / 1000 = 2000.
 constexpr size_t AMOSTRAS_POR_JANELA = FREQ_AMOSTRAGEM_HZ * JANELA_MS / 1000;
 
-// Teste da Parte 4: imprime no Serial o RMS bruto de cada canal a cada janela.
+// Teste: imprime no Serial o nível em dB de cada canal a cada janela.
 // Remover na Parte 7.
 #define DEBUG_AUDIO 1
 
