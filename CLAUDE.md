@@ -5,7 +5,8 @@ com LED e buzzer. O limite (dB) e o tempo X (segundos) são definidos numa pági
 servida pelo próprio ESP32.
 
 ## Regras
-- Branch `feature/firmware`. O firmware fica só em `firmware/noisetrack/`.
+- Uma branch por parte, criada a partir da `main`. O firmware fica só em
+  `firmware/noisetrack/`.
 - Não alterar `script.ino`, `index.html`, `docs/` nem o `diagram.json` da raiz
   (simulação antiga).
 - Um commit por parte. Antes de cada commit, rodar `git status` e `git diff`.
@@ -37,14 +38,19 @@ servida pelo próprio ESP32.
 - Módulo de buzzer ativo de 3 pinos (transistor embutido). A lógica pode ser
   invertida: constante `BUZZER_ATIVO_EM_BAIXO`.
 - Pinos: SCK 26, WS 25, SD 33, LEDs 4, buzzer 27.
+- Dois microfones INMP441. A constante `NUM_MICROFONES` (1 ou 2) em `config.h`
+  escolhe quantos são lidos.
+- Ligação dos microfones: os dois dividem SCK (GPIO 26), WS (GPIO 25) e
+  SD (GPIO 33), além de VDD e GND. Mic 1: L/R no GND (canal esquerdo).
+  Mic 2: L/R no 3V3 (canal direito).
 - Padrão: 65 dB e X = 5 s.
 - Nada pago.
 
 ## Plano por partes
-1. Esqueleto e `config.h` (feito)
-2. Módulo WS2812 / LEDs (feito)
-3. Módulo de buzzer (feito)
-4. Fonte de áudio: INMP441 por I2S via `driver/i2s.h` (a plataforma é
+1. Esqueleto e `config.h` (mesclada na `main`, PR #4)
+2. Módulo WS2812 / LEDs (mesclada na `main`, PR #4)
+3. Módulo de buzzer (mesclada na `main`, PR #4)
+4. Fonte de áudio: 2 INMP441 por I2S via `driver/i2s.h` (a plataforma é
    espressif32@6.9.0 com núcleo 2.x) e fonte simulada
 5. Nível em dB: RMS em janelas de 125 ms e calibração
 6. Regra dos X segundos: calmo, contando, alerta
