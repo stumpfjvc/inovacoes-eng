@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "author": "NoiseTrack",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-led-ring", "id": "leds", "top": -140, "left": 150, "attrs": { "pixels": "4" } },
+    { "type": "wokwi-resistor", "id": "r_leds", "top": -40, "left": 150, "attrs": { "value": "330" } },
+    { "type": "wokwi-buzzer", "id": "bz", "top": 120, "left": 170, "attrs": { "volume": "0.2" } },
+    { "type": "wokwi-led", "id": "led_bz", "top": 120, "left": 260, "attrs": { "color": "orange", "label": "buzzer" } },
+    { "type": "wokwi-resistor", "id": "r_bz", "top": 200, "left": 250, "rotate": 90, "attrs": { "value": "220" } }
+  ],
+  "connections": [
+    [ "esp:TX0", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:D4", "r_leds:1", "green", [] ],
+    [ "r_leds:2", "leds:DIN", "green", [] ],
+    [ "leds:VCC", "esp:VIN", "red", [] ],
+    [ "leds:GND", "esp:GND.1", "black", [] ],
+    [ "esp:D27", "bz:2", "orange", [] ],
+    [ "bz:1", "esp:GND.2", "black", [] ],
+    [ "esp:D27", "led_bz:A", "orange", [] ],
+    [ "led_bz:C", "r_bz:1", "black", [] ],
+    [ "r_bz:2", "esp:GND.2", "black", [] ]
+  ]
+}
