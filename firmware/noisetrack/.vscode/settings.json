@@ -1,0 +1,9 @@
+{
+    // Impede que a extensão PlatformIO IDE rode "project init" sozinha
+    // (reindexação do IntelliSense) quando o platformio.ini ou .pio/libdeps
+    // mudam. Esse processo roda em paralelo com o build e apaga
+    // .pio/build/esp32dev no meio da compilação.
+    // Para atualizar o IntelliSense: PlatformIO > Miscellaneous >
+    // Rebuild IntelliSense Index (com nenhum build rodando).
+    "platformio-ide.autoRebuildAutocompleteIndex": false
+}

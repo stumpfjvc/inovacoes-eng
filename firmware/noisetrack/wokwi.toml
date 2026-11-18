@@ -1,0 +1,6 @@
+# NoiseTrack: configuração do Wokwi para VS Code.
+# Aponta para o firmware gerado pelo PlatformIO (rode "pio run" antes de simular).
+[wokwi]
+version = 1
+firmware = '.pio/build/esp32dev/firmware.bin'
+elf = '.pio/build/esp32dev/firmware.elf'

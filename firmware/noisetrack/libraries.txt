@@ -1,0 +1,2 @@
+# Bibliotecas usadas no Wokwi (no Arduino IDE, instale pelo Gerenciador de Bibliotecas)
+Adafruit NeoPixel

@@ -1,0 +1,48 @@
+// NoiseTrack: configurações do firmware (pinos, padrões e tempos).
+// Todos os valores ajustáveis do projeto ficam neste arquivo.
+#pragma once
+#include <Arduino.h>
+
+// ================== AMBIENTE ==================
+#define USANDO_WOKWI    1   // 1 = simulador Wokwi | 0 = placa física
+#define FONTE_SIMULADA  1   // 1 = nível gerado por software | 0 = microfone INMP441 (Parte 4)
+
+// ================== PINOS ==================
+// Ponto de partida, a confirmar na montagem (ver README).
+
+// Microfone INMP441 (I2S)
+constexpr uint8_t PINO_MIC_SCK = 26;
+constexpr uint8_t PINO_MIC_WS  = 25;
+constexpr uint8_t PINO_MIC_SD  = 33;
+
+// Módulo WS2812 (dados)
+constexpr uint8_t PINO_LEDS = 4;
+constexpr uint8_t NUM_LEDS    = 4;
+constexpr uint8_t BRILHO_LEDS = 77;   // 0–255; 77 ≈ 30%
+
+// Módulo de buzzer ativo (I/O)
+constexpr uint8_t PINO_BUZZER = 27;
+// 0 = o módulo toca com o sinal em nível ALTO | 1 = toca em nível BAIXO (lógica invertida).
+// Conferir na bancada (ver README) e ajustar aqui.
+#define BUZZER_ATIVO_EM_BAIXO 0
+constexpr uint32_t BUZZER_BIPE_MS = 500;   // bipe intermitente: 500 ms ligado, 500 ms desligado
+
+// ================== REGRA DE ALERTA (valores padrão) ==================
+// Usados enquanto não houver configuração salva na memória (Parte 8).
+constexpr int LIMITE_PADRAO_DB = 65;   // limite em dB
+constexpr int TEMPO_X_PADRAO_S = 5;    // segundos contínuos acima do limite
+
+constexpr int LIMITE_MIN_DB = 30;
+constexpr int LIMITE_MAX_DB = 120;
+constexpr int TEMPO_X_MIN_S = 1;
+constexpr int TEMPO_X_MAX_S = 600;
+
+// ================== TEMPOS ==================
+constexpr uint32_t JANELA_MS    = 125;    // duração de cada janela de medição (Parte 5)
+constexpr uint32_t BATIMENTO_MS = 1000;   // intervalo da mensagem de "vivo" no Serial
+
+// ================== DEMONSTRAÇÃO DAS SAÍDAS ==================
+// Enquanto a medição não existe (Partes 4–7), alterna calmo -> contando -> alerta
+// para testar LEDs e buzzer. Desligar (0) quando a regra real entrar.
+#define MODO_DEMO_SAIDAS 1
+constexpr uint32_t DEMO_PASSO_MS = 2000;
