@@ -22,6 +22,10 @@ constexpr uint8_t BRILHO_LEDS = 77;   // 0–255; 77 ≈ 30%
 
 // Módulo de buzzer ativo (I/O)
 constexpr uint8_t PINO_BUZZER = 27;
+// 0 = o módulo toca com o sinal em nível ALTO | 1 = toca em nível BAIXO (lógica invertida).
+// Conferir na bancada (ver README) e ajustar aqui.
+#define BUZZER_ATIVO_EM_BAIXO 0
+constexpr uint32_t BUZZER_BIPE_MS = 500;   // bipe intermitente: 500 ms ligado, 500 ms desligado
 
 // ================== REGRA DE ALERTA (valores padrão) ==================
 // Usados enquanto não houver configuração salva na memória (Parte 8).

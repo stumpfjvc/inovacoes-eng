@@ -7,6 +7,7 @@
 #include "config.h"
 #include "estado.h"
 #include "leds.h"
+#include "buzzer.h"
 
 static uint32_t tUltimoBatimento = 0;
 
@@ -27,6 +28,7 @@ static void atualizarDemo(uint32_t agora) {
     Serial.printf("[demo] estado = %s\n", nomeEstado(estadoDemo));
   }
   leds_mostrar(estadoDemo);
+  buzzer_atualizar(estadoDemo == Estado::ALERTA, agora);
 }
 #endif
 
@@ -37,6 +39,7 @@ void setup() {
   Serial.printf("Limite padrao: %d dB | Tempo X padrao: %d s\n",
                 LIMITE_PADRAO_DB, TEMPO_X_PADRAO_S);
 
+  buzzer_iniciar();   // primeiro, para o buzzer não apitar durante o resto do setup
   leds_iniciar();
 }
 
