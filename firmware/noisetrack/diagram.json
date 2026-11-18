@@ -3,10 +3,16 @@
   "author": "NoiseTrack",
   "editor": "wokwi",
   "parts": [
-    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} }
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    { "type": "wokwi-led-ring", "id": "leds", "top": -140, "left": 150, "attrs": { "pixels": "4" } },
+    { "type": "wokwi-resistor", "id": "r_leds", "top": -40, "left": 150, "attrs": { "value": "330" } }
   ],
   "connections": [
     [ "esp:TX0", "$serialMonitor:RX", "", [] ],
-    [ "esp:RX0", "$serialMonitor:TX", "", [] ]
+    [ "esp:RX0", "$serialMonitor:TX", "", [] ],
+    [ "esp:D4", "r_leds:1", "green", [] ],
+    [ "r_leds:2", "leds:DIN", "green", [] ],
+    [ "leds:VCC", "esp:VIN", "red", [] ],
+    [ "leds:GND", "esp:GND.1", "black", [] ]
   ]
 }

@@ -17,6 +17,8 @@ constexpr uint8_t PINO_MIC_SD  = 33;
 
 // Módulo WS2812 (dados)
 constexpr uint8_t PINO_LEDS = 4;
+constexpr uint8_t NUM_LEDS    = 4;
+constexpr uint8_t BRILHO_LEDS = 77;   // 0–255; 77 ≈ 30%
 
 // Módulo de buzzer ativo (I/O)
 constexpr uint8_t PINO_BUZZER = 27;
@@ -34,3 +36,9 @@ constexpr int TEMPO_X_MAX_S = 600;
 // ================== TEMPOS ==================
 constexpr uint32_t JANELA_MS    = 125;    // duração de cada janela de medição (Parte 5)
 constexpr uint32_t BATIMENTO_MS = 1000;   // intervalo da mensagem de "vivo" no Serial
+
+// ================== DEMONSTRAÇÃO DAS SAÍDAS ==================
+// Enquanto a medição não existe (Partes 4–7), alterna calmo -> contando -> alerta
+// para testar LEDs e buzzer. Desligar (0) quando a regra real entrar.
+#define MODO_DEMO_SAIDAS 1
+constexpr uint32_t DEMO_PASSO_MS = 2000;
