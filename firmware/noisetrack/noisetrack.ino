@@ -1,35 +1,29 @@
 // NoiseTrack: firmware do medidor de ruído (ESP32)
 // Ver README.md e o plano de implementação por partes.
 //
-// Regra geral: o loop() nunca usa delay() nem fica esperando rede.
-// Cada tarefa roda quando chega a hora dela, medida com millis().
+// O alerta local (áudio, dB, regra, LEDs e buzzer) roda numa tarefa FreeRTOS
+// própria (tarefa_audio.cpp). O loop() só imprime: nunca usa delay() nem
+// espera rede, e cada coisa roda quando chega a hora dela, medida com millis().
 
 #include "config.h"
 #include "estado.h"
 #include "leds.h"
 #include "buzzer.h"
 #include "audio.h"
-#include "nivel_db.h"
+#include "tarefa_audio.h"
 #include "teste_nivel_db.h"
-#include "regra.h"
 #include "teste_regra.h"
+#include "teste_tarefa.h"
+
+// De quanto em quanto tempo o loop() olha o estado publicado pela tarefa.
+// 25 ms é bem menos que uma janela (125 ms), então nenhuma janela passa batida.
+static constexpr uint32_t CONSULTA_MS = 25;
 
 static uint32_t tUltimoBatimento = 0;
-
-// Regra dos X segundos (Parte 6). Começa em CALMO.
-static Regra regra;
-
-#if DEBUG_AUDIO
-// Lê uma janela a cada JANELA_MS, imprime o nível em dB de cada canal e o
-// combinado, e alimenta a regra. Na Parte 7 isto vai para uma tarefa FreeRTOS.
-static int32_t janelaA[AMOSTRAS_POR_JANELA];
-#if NUM_MICROFONES == 2
-static int32_t  janelaB[AMOSTRAS_POR_JANELA];
-static int32_t* const ptrJanelaB = janelaB;
-#else
-static int32_t* const ptrJanelaB = nullptr;   // com 1 microfone, não há canal B
-#endif
-static uint32_t tUltimaJanela = 0;
+static uint32_t tUltimaConsulta  = 0;
+static uint32_t janelasImpressas = 0;
+static uint32_t eventosImpressos = 0;
+static Estado   estadoImpresso   = Estado::CALMO;
 
 // Escreve "xx.x dB" ou "--" (canal sem sinal ou ausente) em "texto".
 static void formatarDb(char* texto, size_t tamanho, float db, bool valido) {
@@ -37,58 +31,35 @@ static void formatarDb(char* texto, size_t tamanho, float db, bool valido) {
   else        snprintf(texto, tamanho, "--");
 }
 
-static void processarJanela(uint32_t agora) {
-  if (agora - tUltimaJanela < JANELA_MS) return;
-  tUltimaJanela = agora;
+// Lê uma cópia do estado da tarefa e imprime o que for novo.
+static void imprimirEstado(uint32_t agora) {
+  if (agora - tUltimaConsulta < CONSULTA_MS) return;
+  tUltimaConsulta = agora;
 
-  if (!audio_ler_janela(janelaA, ptrJanelaB)) {
-    Serial.println("[audio] janela descartada");
-    return;
+  const EstadoCompartilhado e = tarefa_audio_copiar();
+
+  if (e.contadorJanelas != janelasImpressas) {   // janela nova
+    janelasImpressas = e.contadorJanelas;
+    char textoA[16], textoB[16], textoComb[16];
+    formatarDb(textoA, sizeof(textoA), e.dbA, e.validoA);
+    formatarDb(textoB, sizeof(textoB), e.dbB, e.validoB);
+    formatarDb(textoComb, sizeof(textoComb), e.dbCombinado, e.validoCombinado);
+    Serial.printf("[nivel] A = %s | B = %s | comb = %s%s\n", textoA, textoB, textoComb,
+                  e.canalDescartado ? " (canal sem sinal fora da conta)" : "");
   }
-  // Na fonte real, a leitura acima esperou ~125 ms: o instante certo da janela é agora.
-  const uint32_t fimJanela = millis();
-  const NivelDb nivel = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA);
 
-  char textoA[16], textoB[16], textoComb[16];
-  formatarDb(textoA, sizeof(textoA), nivel.dbA, nivel.validoA);
-  formatarDb(textoB, sizeof(textoB), nivel.dbB, nivel.validoB);
-  formatarDb(textoComb, sizeof(textoComb), nivel.dbCombinado, nivel.validoCombinado);
-  Serial.printf("[nivel] A = %s | B = %s | comb = %s%s\n", textoA, textoB, textoComb,
-                nivel.canalDescartado ? " (canal sem sinal fora da conta)" : "");
-
-  // Limite e X ainda são os padrões; na Parte 8 virão da memória (Preferences).
-  const RegraSaida r = regra.atualizar(nivel.dbCombinado, nivel.validoCombinado, fimJanela,
-                                       LIMITE_PADRAO_DB, TEMPO_X_PADRAO_S);
-  if (r.mudou) {
-    Serial.printf("[regra] estado=%s acima=%lu ms", nomeEstado(r.estado),
-                  (unsigned long)r.acimaMs);
-    if (r.evento != EventoRegra::NENHUM) Serial.printf(" (%s)", nomeEvento(r.evento));
+  if (e.estado != estadoImpresso) {   // o estado mudou
+    estadoImpresso = e.estado;
+    Serial.printf("[regra] estado=%s acima=%lu ms", nomeEstado(e.estado),
+                  (unsigned long)e.acimaMs);
+    if (e.contadorEventos != eventosImpressos) {
+      eventosImpressos = e.contadorEventos;
+      Serial.printf(" (%s)", nomeEvento(e.ultimoEvento));
+    }
+    if (e.falhasSeguidas >= FALHAS_ATE_SEM_SINAL) Serial.print(" [I2S sem resposta]");
     Serial.println();
   }
 }
-#endif
-
-#if MODO_DEMO_SAIDAS
-// Demonstração: troca de estado a cada DEMO_PASSO_MS.
-// Será substituída pela regra real dos X segundos (Partes 4–7).
-static Estado   estadoDemo       = Estado::CALMO;
-static uint32_t tUltimoPassoDemo = 0;
-
-static void atualizarDemo(uint32_t agora) {
-  if (agora - tUltimoPassoDemo >= DEMO_PASSO_MS) {
-    tUltimoPassoDemo = agora;
-    switch (estadoDemo) {
-      case Estado::CALMO:    estadoDemo = Estado::CONTANDO; break;
-      case Estado::CONTANDO: estadoDemo = Estado::ALERTA;   break;
-      case Estado::ALERTA:   estadoDemo = Estado::CALMO;    break;
-      case Estado::SEM_SINAL: estadoDemo = Estado::CALMO;   break;
-    }
-    Serial.printf("[demo] estado = %s\n", nomeEstado(estadoDemo));
-  }
-  leds_mostrar(estadoDemo);
-  buzzer_atualizar(estadoDemo == Estado::ALERTA, agora);
-}
-#endif
 
 void setup() {
   Serial.begin(115200);
@@ -108,8 +79,15 @@ void setup() {
 #endif
 
   if (!audio_iniciar()) {
+    // Segue mesmo assim: a tarefa vai falhar ao ler e cair em SEM_SINAL (LED azul).
     Serial.println("[audio] ERRO: fonte de audio nao iniciou");
   }
+
+  // A partir daqui, só a tarefa mexe no áudio, nos LEDs e no buzzer.
+  if (!tarefa_audio_iniciar()) {
+    Serial.println("[tarefa] ERRO: nao foi possivel criar a tarefa de audio");
+  }
+  teste_tarefa_iniciar(millis());
 }
 
 void loop() {
@@ -121,16 +99,6 @@ void loop() {
     Serial.printf("[vivo] %lu ms\n", (unsigned long)agora);
   }
 
-#if DEBUG_AUDIO
-  processarJanela(agora);
-#endif
-
-#if MODO_DEMO_SAIDAS
-  atualizarDemo(agora);
-#else
-  // LEDs e buzzer seguem o estado real da regra. Chamados a cada volta do loop
-  // (não só a cada janela) para o bipe do buzzer manter o ritmo.
-  leds_mostrar(regra.estado());
-  buzzer_atualizar(regra.estado() == Estado::ALERTA, millis());
-#endif
+  imprimirEstado(agora);
+  teste_tarefa_verificar(agora);
 }

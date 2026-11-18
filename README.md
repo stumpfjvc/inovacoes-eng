@@ -129,9 +129,9 @@ Nenhum áudio é gravado, armazenado ou enviado.
 | Montagem do circuito | Em desenvolvimento |
 | Firmware: leitura dos microfones (2 INMP441 por I2S) | Pronto |
 | Firmware: cálculo do nível em dB | Pronto |
-| Firmware: regra do tempo X contínuo | Em desenvolvimento |
+| Firmware: regra do tempo X contínuo | Pronto |
 | Firmware: controle do módulo WS2812 (biblioteca NeoPixel ou FastLED) | Pendente |
-| Firmware: buzzer e alerta local sem Wi-Fi | Pendente |
+| Firmware: buzzer e alerta local sem Wi-Fi | Em desenvolvimento |
 | Firmware: receber e guardar a configuração | Pendente |
 | Página de configuração servida pelo ESP32 | Pendente |
 | Aviso ao porteiro na página aberta | Pendente |
