@@ -48,6 +48,8 @@ servida pelo próprio ESP32.
 - Calibração separada por microfone (`OFFSET_CAL_MIC_A_DB` e
   `OFFSET_CAL_MIC_B_DB` em `config.h`).
 - O nível é dB SPL sem ponderação A. A ponderação A fica como melhoria futura.
+- Sem sinal nos dois microfones é ERRO (estado próprio `SEM_SINAL`, sem alerta,
+  com cor própria no LED), e não "calmo".
 - Padrão: 65 dB e X = 5 s.
 - Nada pago.
 
@@ -57,7 +59,7 @@ servida pelo próprio ESP32.
 3. Módulo de buzzer (mesclada na `main`, PR #4)
 4. Fonte de áudio: 2 INMP441 por I2S via `driver/i2s.h` (a plataforma é
    espressif32@6.9.0 com núcleo 2.x) e fonte simulada (mesclada na `main`, PR #5)
-5. Nível em dB: RMS em janelas de 125 ms e calibração
+5. Nível em dB: RMS em janelas de 125 ms e calibração (mesclada na `main`, PR #7)
 6. Regra dos X segundos: calmo, contando, alerta
 7. Alerta local numa tarefa FreeRTOS, sem depender de Wi-Fi, com
    `MODO_DEMO_SAIDAS = 0`

@@ -11,12 +11,17 @@
 #include "audio.h"
 #include "nivel_db.h"
 #include "teste_nivel_db.h"
+#include "regra.h"
+#include "teste_regra.h"
 
 static uint32_t tUltimoBatimento = 0;
 
+// Regra dos X segundos (Parte 6). Começa em CALMO.
+static Regra regra;
+
 #if DEBUG_AUDIO
-// Teste: lê uma janela a cada JANELA_MS e imprime o nível em dB de cada canal
-// e o combinado. Remover na Parte 7.
+// Lê uma janela a cada JANELA_MS, imprime o nível em dB de cada canal e o
+// combinado, e alimenta a regra. Na Parte 7 isto vai para uma tarefa FreeRTOS.
 static int32_t janelaA[AMOSTRAS_POR_JANELA];
 #if NUM_MICROFONES == 2
 static int32_t  janelaB[AMOSTRAS_POR_JANELA];
@@ -32,7 +37,7 @@ static void formatarDb(char* texto, size_t tamanho, float db, bool valido) {
   else        snprintf(texto, tamanho, "--");
 }
 
-static void depurarAudio(uint32_t agora) {
+static void processarJanela(uint32_t agora) {
   if (agora - tUltimaJanela < JANELA_MS) return;
   tUltimaJanela = agora;
 
@@ -40,6 +45,8 @@ static void depurarAudio(uint32_t agora) {
     Serial.println("[audio] janela descartada");
     return;
   }
+  // Na fonte real, a leitura acima esperou ~125 ms: o instante certo da janela é agora.
+  const uint32_t fimJanela = millis();
   const NivelDb nivel = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA);
 
   char textoA[16], textoB[16], textoComb[16];
@@ -48,6 +55,16 @@ static void depurarAudio(uint32_t agora) {
   formatarDb(textoComb, sizeof(textoComb), nivel.dbCombinado, nivel.validoCombinado);
   Serial.printf("[nivel] A = %s | B = %s | comb = %s%s\n", textoA, textoB, textoComb,
                 nivel.canalDescartado ? " (canal sem sinal fora da conta)" : "");
+
+  // Limite e X ainda são os padrões; na Parte 8 virão da memória (Preferences).
+  const RegraSaida r = regra.atualizar(nivel.dbCombinado, nivel.validoCombinado, fimJanela,
+                                       LIMITE_PADRAO_DB, TEMPO_X_PADRAO_S);
+  if (r.mudou) {
+    Serial.printf("[regra] estado=%s acima=%lu ms", nomeEstado(r.estado),
+                  (unsigned long)r.acimaMs);
+    if (r.evento != EventoRegra::NENHUM) Serial.printf(" (%s)", nomeEvento(r.evento));
+    Serial.println();
+  }
 }
 #endif
 
@@ -64,6 +81,7 @@ static void atualizarDemo(uint32_t agora) {
       case Estado::CALMO:    estadoDemo = Estado::CONTANDO; break;
       case Estado::CONTANDO: estadoDemo = Estado::ALERTA;   break;
       case Estado::ALERTA:   estadoDemo = Estado::CALMO;    break;
+      case Estado::SEM_SINAL: estadoDemo = Estado::CALMO;   break;
     }
     Serial.printf("[demo] estado = %s\n", nomeEstado(estadoDemo));
   }
@@ -85,6 +103,9 @@ void setup() {
 #if TESTE_NIVEL_DB
   teste_nivel_db_rodar();   // só imprime PASS/FAIL; não trava se falhar
 #endif
+#if TESTE_REGRA
+  teste_regra_rodar();      // idem
+#endif
 
   if (!audio_iniciar()) {
     Serial.println("[audio] ERRO: fonte de audio nao iniciou");
@@ -100,11 +121,16 @@ void loop() {
     Serial.printf("[vivo] %lu ms\n", (unsigned long)agora);
   }
 
-#if MODO_DEMO_SAIDAS
-  atualizarDemo(agora);
+#if DEBUG_AUDIO
+  processarJanela(agora);
 #endif
 
-#if DEBUG_AUDIO
-  depurarAudio(agora);
+#if MODO_DEMO_SAIDAS
+  atualizarDemo(agora);
+#else
+  // LEDs e buzzer seguem o estado real da regra. Chamados a cada volta do loop
+  // (não só a cada janela) para o bipe do buzzer manter o ritmo.
+  leds_mostrar(regra.estado());
+  buzzer_atualizar(regra.estado() == Estado::ALERTA, millis());
 #endif
 }
