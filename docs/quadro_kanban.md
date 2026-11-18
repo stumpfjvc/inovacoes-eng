@@ -28,10 +28,9 @@
 
 ### Done (Concluído)
 
-- [x] Entrevistas com o público
-- [x] Decisão do material
 - [x] Compra e pedido dos componentes
 
 ### Log
 
-*(Vazio)*
+- [x] Entrevistas com o público (relatório, seções 2.1 a 2.3)
+- [x] Decisão do material (relatório, seções 2.4 e 4.5)
