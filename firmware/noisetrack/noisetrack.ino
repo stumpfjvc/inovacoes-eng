@@ -21,6 +21,9 @@
 #include "teste_prefs.h"
 #include "teste_wifi.h"
 #include "teste_web.h"
+// Sempre incluído (só declarações): o PlatformIO cria protótipos das funções do
+// .ino sem olhar os #if, e eles precisam conhecer o AcumuladorCalib.
+#include "calibracao.h"
 
 // De quanto em quanto tempo o loop() olha o estado publicado pela tarefa.
 // 25 ms é bem menos que uma janela (125 ms), então nenhuma janela passa batida.
@@ -38,6 +41,40 @@ static void formatarDb(char* texto, size_t tamanho, float db, bool valido) {
   else        snprintf(texto, tamanho, "--");
 }
 
+#if CALIBRACAO
+// Somas do período de calibração atual (só o loop() mexe nelas).
+static AcumuladorCalib calibA, calibB, calibComb;
+static uint32_t        tUltimaCalib = 0;
+
+// Escreve a média do período ("xx.x dB") ou "sem sinal" em "texto".
+static void formatarMedia(char* texto, size_t tamanho, const AcumuladorCalib& a) {
+  float media = 0.0f;
+  if (calib_media(a, &media)) snprintf(texto, tamanho, "%.1f dB", media);
+  else                        snprintf(texto, tamanho, "sem sinal");
+}
+
+// A cada CALIB_PERIODO_MS imprime as médias em energia e começa outro período.
+static void imprimirCalibracao(uint32_t agora) {
+  if (agora - tUltimaCalib < CALIB_PERIODO_MS) return;
+  tUltimaCalib = agora;
+
+  char textoA[16], textoB[16], textoComb[16];
+  formatarMedia(textoA, sizeof(textoA), calibA);
+  formatarMedia(textoB, sizeof(textoB), calibB);
+  formatarMedia(textoComb, sizeof(textoComb), calibComb);
+  Serial.printf("[calib] %lu s: A = %s | B = %s | comb = %s",
+                (unsigned long)(CALIB_PERIODO_MS / 1000), textoA, textoB, textoComb);
+  if (calibComb.janelas > 0) {
+    Serial.printf(" (min %.1f, max %.1f)", calibComb.minDb, calibComb.maxDb);
+  }
+  Serial.println();
+
+  calib_zerar(&calibA);
+  calib_zerar(&calibB);
+  calib_zerar(&calibComb);
+}
+#endif
+
 // Lê uma cópia do estado da tarefa e imprime o que for novo.
 static void imprimirEstado(uint32_t agora) {
   if (agora - tUltimaConsulta < CONSULTA_MS) return;
@@ -47,12 +84,19 @@ static void imprimirEstado(uint32_t agora) {
 
   if (e.contadorJanelas != janelasImpressas) {   // janela nova
     janelasImpressas = e.contadorJanelas;
+#if CALIBRACAO
+    // Cada janela entra uma vez só na média (o contador mudou = janela nova).
+    calib_somar(&calibA, e.dbA, e.validoA);
+    calib_somar(&calibB, e.dbB, e.validoB);
+    calib_somar(&calibComb, e.dbCombinado, e.validoCombinado);
+#else
     char textoA[16], textoB[16], textoComb[16];
     formatarDb(textoA, sizeof(textoA), e.dbA, e.validoA);
     formatarDb(textoB, sizeof(textoB), e.dbB, e.validoB);
     formatarDb(textoComb, sizeof(textoComb), e.dbCombinado, e.validoCombinado);
     Serial.printf("[nivel] A = %s | B = %s | comb = %s%s\n", textoA, textoB, textoComb,
                   e.canalDescartado ? " (canal sem sinal fora da conta)" : "");
+#endif
   }
 
   if (e.estado != estadoImpresso) {   // o estado mudou
@@ -112,6 +156,14 @@ void setup() {
   web_iniciar();            // a página só liga quando o Wi-Fi do local conectar
 
   comandos_serial_iniciar();
+#if CALIBRACAO
+  calib_zerar(&calibA);
+  calib_zerar(&calibB);
+  calib_zerar(&calibComb);
+  tUltimaCalib = millis();
+  Serial.printf("[calib] modo calibracao: media em energia a cada %lu s (sem linhas [nivel])\n",
+                (unsigned long)(CALIB_PERIODO_MS / 1000));
+#endif
   teste_tarefa_iniciar(millis());
 }
 
@@ -125,6 +177,9 @@ void loop() {
   }
 
   imprimirEstado(agora);
+#if CALIBRACAO
+  imprimirCalibracao(agora);     // média dos últimos 5 s (só com CALIBRACAO 1)
+#endif
   comandos_serial_atualizar();   // pode gravar na flash: por isso fica aqui, e não na tarefa
   rede_atualizar(agora);         // Wi-Fi, portal, mDNS e NTP: nunca espera a rede
   web_atualizar(agora);          // página, /status, /config e WebSocket
