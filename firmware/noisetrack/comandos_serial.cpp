@@ -7,6 +7,7 @@
 #if FONTE_SIMULADA
 #include "audio.h"
 #include "armazenamento.h"
+#include "rede.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -38,6 +39,24 @@ static void interpretarLinha(char* s) {
   if (*s == '\0') return;   // linha vazia
 
   long v = 0;
+
+  // Rede (Parte 9): só as linhas exatas "wifi" e "wifi apagar".
+  if (strcmp(s, "wifi") == 0) {
+    rede_imprimir_status();
+    return;
+  }
+  if (strcmp(s, "wifi apagar") == 0) {
+    if (armazenamento_wifi_apagar()) {
+      Serial.println("[wifi] rede salva apagada");
+#if USANDO_WOKWI
+      Serial.println("[wifi] (no Wokwi a rede continua sendo a Wokwi-GUEST)");
+#endif
+      rede_credenciais_mudaram();
+    } else {
+      Serial.println("[wifi] ERRO: memoria nao abriu");
+    }
+    return;
+  }
 
 #if TESTE_PREFS
   // "limite N" e "x N": o prefixo diferencia do nível forçado, que é só um número.
@@ -81,7 +100,7 @@ void comandos_serial_iniciar() {
 #if TESTE_PREFS
   Serial.print(" | 'limite N' | 'x N'");
 #endif
-  Serial.println();
+  Serial.println(" | 'wifi' | 'wifi apagar'");
 }
 
 void comandos_serial_atualizar() {

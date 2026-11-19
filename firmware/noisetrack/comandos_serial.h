@@ -2,6 +2,8 @@
 //   80 / auto   -> força o nível simulado (20 a 120 dB) ou volta ao automático
 //   limite 70   -> muda e grava o limite (30 a 120 dB)    [TESTE_PREFS]
 //   x 8         -> muda e grava o tempo X (1 a 600 s)      [TESTE_PREFS]
+//   wifi        -> mostra o estado da rede, o IP e o horário
+//   wifi apagar -> apaga a rede salva (liga o AP de setup)
 // Com FONTE_SIMULADA = 0, nada aqui é usado.
 #pragma once
 

@@ -120,3 +120,23 @@ constexpr float OFFSET_CAL_MAX_DB = 20.0f;
 // (só na fonte simulada). O autoteste grava na flash a cada partida:
 // desligar (0) no aparelho instalado.
 #define TESTE_PREFS 1
+
+// ================== REDE (Parte 9) ==================
+// Tempo máximo da primeira tentativa de conexão antes de ligar o AP de setup.
+constexpr uint32_t WIFI_TIMEOUT_MS = 15000;
+// Depois de cair, tenta reconectar a cada WIFI_RETRY_MS.
+constexpr uint32_t WIFI_RETRY_MS = 5000;
+// Com o AP de setup ligado e ninguém conectado nele, tenta a rede salva de novo
+// a cada WIFI_RETRY_AP_MS (cada tentativa atrapalha o AP por uns segundos).
+constexpr uint32_t WIFI_RETRY_AP_MS = 30000;
+
+constexpr const char* WIFI_AP_NOME = "NoiseTrack-Setup";   // rede do AP de setup
+constexpr const char* MDNS_NOME    = "noisetrack";         // noisetrack.local
+
+// Horário: UTC-3, sem horário de verão.
+constexpr long        FUSO_HORARIO_S = -3 * 3600;
+constexpr const char* NTP_SERVIDOR_1 = "pool.ntp.org";
+constexpr const char* NTP_SERVIDOR_2 = "a.st1.ntp.br";
+
+// Autoteste da lógica de rede (máquina de estados, validação, senha do AP).
+#define TESTE_WIFI 1
