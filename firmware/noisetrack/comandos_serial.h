@@ -4,6 +4,7 @@
 //   x 8         -> muda e grava o tempo X (1 a 600 s)      [TESTE_PREFS]
 //   wifi        -> mostra o estado da rede, o IP e o horário
 //   wifi apagar -> apaga a rede salva (liga o AP de setup)
+//   web         -> mostra o endereço da página, os clientes e a senha de configuração
 // Com FONTE_SIMULADA = 0, nada aqui é usado.
 #pragma once
 

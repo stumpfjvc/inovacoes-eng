@@ -62,6 +62,12 @@ bool rede_senha_valida(const char* senha);
 extern const char REDE_ALFABETO_SENHA[];
 constexpr size_t REDE_TAM_SENHA_AP = 8;
 
-// Senha do AP: SHA-256 de (MAC + segredo), convertida em 8 caracteres do alfabeto.
-// "saida" precisa de REDE_TAM_SENHA_AP + 1 posições (o +1 é o fim do texto).
+// Senha gerada: SHA-256 de (MAC + prefixo + segredo), convertida em 8 caracteres
+// do alfabeto. "saida" precisa de REDE_TAM_SENHA_AP + 1 posições (o +1 é o fim do texto).
+void rede_gerar_senha(const uint8_t mac[6], const char* prefixo, const char* segredo, char* saida);
+
+// Senha do AP de setup: prefixo vazio (a mesma conta da Parte 9).
 void rede_gerar_senha_ap(const uint8_t mac[6], const char* segredo, char* saida);
+
+// Prefixo da senha de configuração da página (Parte 10): outro prefixo, outra senha.
+constexpr const char* REDE_PREFIXO_SENHA_CONFIG = "config:";

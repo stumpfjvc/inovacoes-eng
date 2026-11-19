@@ -8,6 +8,7 @@
 #include "audio.h"
 #include "armazenamento.h"
 #include "rede.h"
+#include "web.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -39,6 +40,12 @@ static void interpretarLinha(char* s) {
   if (*s == '\0') return;   // linha vazia
 
   long v = 0;
+
+  // Página (Parte 10): só a linha exata "web".
+  if (strcmp(s, "web") == 0) {
+    web_imprimir_status();
+    return;
+  }
 
   // Rede (Parte 9): só as linhas exatas "wifi" e "wifi apagar".
   if (strcmp(s, "wifi") == 0) {
@@ -100,7 +107,7 @@ void comandos_serial_iniciar() {
 #if TESTE_PREFS
   Serial.print(" | 'limite N' | 'x N'");
 #endif
-  Serial.println(" | 'wifi' | 'wifi apagar'");
+  Serial.println(" | 'wifi' | 'wifi apagar' | 'web'");
 }
 
 void comandos_serial_atualizar() {

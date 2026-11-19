@@ -1,0 +1,321 @@
+// NoiseTrack: página do ESP32 (Parte 10).
+// GERADO por gerar_pagina_h.py a partir de pagina.html. Não editar à mão:
+// edite pagina.html e rode o script de novo.
+#pragma once
+#include <Arduino.h>
+
+static const char PAGINA_HTML[] PROGMEM = R"PAGINA_NT(<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NoiseTrack</title>
+<!-- NoiseTrack: página servida pelo ESP32 (Parte 10).
+     Fonte da página: depois de editar, rode gerar_pagina_h.py para atualizar
+     pagina_html.h, que é o que o firmware compila.
+     Aberta direto do disco (file://) ou com ?demo, mostra dados falsos. -->
+<style>
+:root{--verde:#2e9e4f;--amarelo:#e0a800;--vermelho:#d32f2f;--azul:#1e63c6;
+--fundo:#f4f5f7;--cartao:#fff;--texto:#1d1f23;--suave:#6b7280;--trilho:#e5e7eb}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+background:var(--fundo);color:var(--texto);transition:background .3s}
+body.alerta{background:#f6c9c9}
+body.sem_sinal{background:#d5e3f7}
+main{max-width:30rem;margin:0 auto;padding:1rem}
+header{display:flex;justify-content:space-between;align-items:center;gap:.5rem}
+h1{font-size:1.3rem;margin:.4rem 0}
+h2{font-size:1rem;margin:0 0 .6rem}
+.conexao{font-size:.85rem;color:var(--suave);display:flex;align-items:center;gap:.4rem}
+.ponto{width:.65rem;height:.65rem;border-radius:50%;background:#9ca3af}
+.cartao{background:var(--cartao);border-radius:.8rem;padding:1rem;margin:.8rem 0;
+box-shadow:0 1px 3px rgba(0,0,0,.08)}
+svg{width:100%;display:block}
+.nivel{text-align:center;font-size:2.6rem;font-weight:700;margin:-.6rem 0 0}
+.estado{text-align:center;font-size:1.25rem;font-weight:700;letter-spacing:.06em}
+.mics{text-align:center;color:var(--suave);font-size:.9rem;margin-top:.3rem}
+.barra{height:1rem;background:var(--trilho);border-radius:.5rem;overflow:hidden}
+.barra div{height:100%;width:0;background:var(--amarelo);transition:width .15s}
+.legenda{font-size:.9rem;color:var(--suave);margin-top:.4rem}
+button{font-size:1rem;padding:.6rem 1rem;border:0;border-radius:.5rem;
+background:var(--texto);color:#fff;cursor:pointer}
+button.ativo{background:var(--verde)}
+label{display:block;font-size:.9rem;margin:.5rem 0 .2rem}
+input{width:100%;padding:.55rem;font-size:1rem;border:1px solid #cbd5e1;border-radius:.4rem}
+.linha{display:flex;gap:.6rem}.linha>div{flex:1}
+#mensagem{min-height:1.2rem;font-size:.9rem;margin-top:.5rem}
+ul{margin:0;padding-left:1.1rem;font-size:.9rem}
+.aviso{font-size:.8rem;color:var(--suave);text-align:center;margin:1rem 0}
+.demo{display:none}body.modo-demo .demo{display:block}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>NoiseTrack</h1>
+  <div class="conexao"><span class="ponto" id="ponto"></span><span id="textoConexao">conectando…</span></div>
+</header>
+
+<div class="cartao">
+  <svg viewBox="0 0 200 118" aria-label="Medidor de nível em dB">
+    <path d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="#e5e7eb" stroke-width="14" stroke-linecap="round"/>
+    <path id="arco" d="M20,100 A80,80 0 0 1 180,100" fill="none" stroke="#2e9e4f" stroke-width="14"
+          stroke-linecap="round" stroke-dasharray="0 999"/>
+    <line id="marca" x1="100" y1="12" x2="100" y2="34" stroke="#1d1f23" stroke-width="3" transform="rotate(0 100 100)"/>
+    <line id="ponteiro" x1="100" y1="100" x2="100" y2="30" stroke="#1d1f23" stroke-width="3"
+          stroke-linecap="round" transform="rotate(-90 100 100)"/>
+    <circle cx="100" cy="100" r="6" fill="#1d1f23"/>
+    <text x="16" y="116" font-size="9" fill="#6b7280">30</text>
+    <text x="172" y="116" font-size="9" fill="#6b7280">120</text>
+  </svg>
+  <div class="nivel" id="nivel">-- dB</div>
+  <div class="estado" id="estado">…</div>
+  <div class="mics">Mic A: <span id="micA">--</span> · Mic B: <span id="micB">--</span></div>
+</div>
+
+<div class="cartao">
+  <h2>Tempo acima do limite</h2>
+  <div class="barra"><div id="barraX"></div></div>
+  <div class="legenda" id="textoX">--</div>
+</div>
+
+<div class="cartao">
+  <h2>Avisos</h2>
+  <button id="botaoSom" type="button">Ativar som</button>
+  <ul id="eventos" style="margin-top:.7rem"><li>Nenhum aviso ainda.</li></ul>
+</div>
+
+<div class="cartao">
+  <h2>Configuração</h2>
+  <form id="formulario">
+    <div class="linha">
+      <div><label for="campoLimite">Limite (dB)</label>
+        <input id="campoLimite" type="number" min="30" max="120" step="1" required></div>
+      <div><label for="campoX">Tempo X (s)</label>
+        <input id="campoX" type="number" min="1" max="600" step="1" required></div>
+    </div>
+    <label for="campoSenha">Senha de configuração</label>
+    <input id="campoSenha" type="password" autocomplete="current-password" required>
+    <div style="margin-top:.8rem"><button type="submit">Salvar</button></div>
+    <div id="mensagem"></div>
+  </form>
+</div>
+
+<div class="cartao demo">
+  <h2>Demonstração</h2>
+  <label><input id="demoSemSinal" type="checkbox" style="width:auto"> Simular "sem sinal"</label>
+  <label><input id="demoAlto" type="checkbox" style="width:auto"> Forçar barulho (80 dB)</label>
+</div>
+
+<p class="aviso">Valores aproximados, sem calibração.</p>
+</main>
+
+<script>
+// ---------- Constantes e utilidades ----------
+var MIN_DB = 30, MAX_DB = 120;
+var COMPRIMENTO_ARCO = 251.3;   // meia volta de raio 80: 3,1416 x 80
+var CORES = {calmo: '#2e9e4f', contando: '#e0a800', alerta: '#d32f2f', sem_sinal: '#1e63c6'};
+var NOMES = {calmo: 'Calmo', contando: 'Contando', alerta: 'ALERTA', sem_sinal: 'Sem sinal'};
+var DEMO = location.protocol === 'file:' || location.search.indexOf('demo') >= 0;
+
+function el(id) { return document.getElementById(id); }
+function fracao(db) { return Math.min(1, Math.max(0, (db - MIN_DB) / (MAX_DB - MIN_DB))); }
+function texto1(v) { return v === null || v === undefined ? '--' : v.toFixed(1); }
+function horaAgora() { return new Date().toLocaleTimeString('pt-BR'); }
+
+// ---------- Mostrar um estado recebido ----------
+var ultimoEventoN = null, formEditado = false, ultimoDado = 0;
+
+function mostrar(d) {
+  ultimoDado = Date.now();
+  document.body.className = d.estado + (DEMO ? ' modo-demo' : '');
+  el('nivel').textContent = d.valido ? texto1(d.db) + ' dB' : '-- dB';
+  el('estado').textContent = NOMES[d.estado] || d.estado;
+  el('estado').style.color = CORES[d.estado] || '';
+  el('micA').textContent = texto1(d.a);
+  el('micB').textContent = texto1(d.b);
+
+  var f = d.valido ? fracao(d.db) : 0;
+  el('arco').style.strokeDasharray = (f * COMPRIMENTO_ARCO) + ' 999';
+  el('arco').style.stroke = CORES[d.estado] || '#9ca3af';
+  el('ponteiro').setAttribute('transform', 'rotate(' + (f * 180 - 90) + ' 100 100)');
+  el('marca').setAttribute('transform', 'rotate(' + (fracao(d.limite) * 180 - 90) + ' 100 100)');
+
+  // A barra enche enquanto conta e fica cheia no alerta; zera quando cai.
+  var total = d.x * 1000;
+  var acima = (d.estado === 'contando' || d.estado === 'alerta') ? Math.min(d.acima_ms, total) : 0;
+  el('barraX').style.width = (100 * acima / total) + '%';
+  el('barraX').style.background = d.estado === 'alerta' ? CORES.alerta : CORES.contando;
+  el('textoX').textContent = (acima / 1000).toFixed(1) + ' s de ' + d.x + ' s acima de ' + d.limite + ' dB';
+
+  if (!formEditado) { el('campoLimite').value = d.limite; el('campoX').value = d.x; }
+  if (ultimoEventoN !== null && d.evento_n !== ultimoEventoN) registrarEvento(d.evento);
+  ultimoEventoN = d.evento_n;
+  ajustarBipe(d.estado === 'alerta');
+}
+
+var NOMES_EVENTOS = {disparou: 'Alerta disparou', normalizou: 'Voltou ao normal', perdeu_sinal: 'Microfone sem sinal'};
+var eventos = [];
+function registrarEvento(nome) {
+  if (!NOMES_EVENTOS[nome]) return;
+  eventos.unshift(horaAgora() + ' — ' + NOMES_EVENTOS[nome]);
+  eventos = eventos.slice(0, 5);
+  el('eventos').innerHTML = '';
+  for (var i = 0; i < eventos.length; i++) {
+    var li = document.createElement('li');
+    li.textContent = eventos[i];
+    el('eventos').appendChild(li);
+  }
+}
+
+// ---------- Som (o navegador só deixa tocar depois de um clique) ----------
+var audio = null, somAtivo = false, timerBipe = null;
+el('botaoSom').onclick = function () {
+  somAtivo = !somAtivo;
+  if (somAtivo) {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    audio.resume();
+    bipe();
+  }
+  el('botaoSom').textContent = somAtivo ? 'Som ativado (clique para desligar)' : 'Ativar som';
+  el('botaoSom').className = somAtivo ? 'ativo' : '';
+};
+function bipe() {
+  if (!somAtivo || !audio) return;
+  var osc = audio.createOscillator(), volume = audio.createGain();
+  osc.frequency.value = 880;
+  volume.gain.value = 0.2;
+  osc.connect(volume);
+  volume.connect(audio.destination);
+  osc.start();
+  osc.stop(audio.currentTime + 0.25);
+}
+function ajustarBipe(alerta) {   // bipa a cada 1 s enquanto durar o alerta
+  if (alerta && !timerBipe) { bipe(); timerBipe = setInterval(bipe, 1000); }
+  else if (!alerta && timerBipe) { clearInterval(timerBipe); timerBipe = null; }
+}
+
+// ---------- Indicador de conexão ----------
+var CONEXOES = {
+  aovivo: ['#2e9e4f', 'ao vivo'], reserva: ['#e0a800', 'reserva (consulta a cada 0,4 s)'],
+  desconectado: ['#d32f2f', 'sem conexão'], demo: ['#1e63c6', 'demonstração (dados falsos)']
+};
+function indicar(tipo) {
+  el('ponto').style.background = CONEXOES[tipo][0];
+  el('textoConexao').textContent = CONEXOES[tipo][1];
+}
+
+// ---------- WebSocket, com polling de reserva ----------
+var ws = null, esperaWs = 1000, timerReconexao = null, timerPolling = null, pedindo = false;
+
+function conectarWs() {
+  // Porta do WebSocket = porta da página + 1 (80 -> 81 na placa).
+  var porta = location.port ? Number(location.port) + 1 : 81;
+  try { ws = new WebSocket('ws://' + location.hostname + ':' + porta + '/'); }
+  catch (e) { ws = null; aoCair(); return; }
+  ws.onopen = function () { esperaWs = 1000; pararPolling(); indicar('aovivo'); };
+  ws.onmessage = function (ev) { try { mostrar(JSON.parse(ev.data)); } catch (e) {} };
+  ws.onclose = function () { ws = null; aoCair(); };
+  ws.onerror = function () { if (ws) ws.close(); };
+}
+function aoCair() {   // usa o polling e tenta de novo com espera crescente (1, 2, 4… até 30 s)
+  iniciarPolling();
+  clearTimeout(timerReconexao);
+  timerReconexao = setTimeout(conectarWs, esperaWs);
+  esperaWs = Math.min(esperaWs * 2, 30000);
+}
+function iniciarPolling() {
+  if (timerPolling) return;
+  indicar('reserva');
+  timerPolling = setInterval(pedirStatus, 400);
+}
+function pararPolling() { clearInterval(timerPolling); timerPolling = null; }
+function pedirStatus() {
+  if (pedindo) return;   // não acumula pedidos se o aparelho demorar
+  pedindo = true;
+  fetch('/status', {cache: 'no-store'})
+    .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function (d) { mostrar(d); if (!ws) indicar('reserva'); })
+    .catch(function () { indicar('desconectado'); })
+    .then(function () { pedindo = false; });
+}
+function vigiar() {   // sem dados há mais de 3 s: avisa
+  if (Date.now() - ultimoDado > 3000) indicar('desconectado');
+}
+
+// ---------- Formulário de configuração ----------
+el('campoLimite').oninput = el('campoX').oninput = function () { formEditado = true; };
+function mensagem(t) { el('mensagem').textContent = t; }
+el('formulario').onsubmit = function (ev) {
+  ev.preventDefault();
+  if (DEMO) { mensagem('Demonstração: nada é salvo.'); return; }
+  var corpo = new URLSearchParams();
+  corpo.append('limite', el('campoLimite').value);
+  corpo.append('x', el('campoX').value);
+  corpo.append('senha', el('campoSenha').value);
+  fetch('/config', {method: 'POST', body: corpo})
+    .then(function (r) { return r.json(); })
+    .then(function (j) {
+      if (j.ok) {
+        mensagem(j.gravou ? 'Salvo.' : 'Nada mudou (valores iguais aos atuais).');
+        formEditado = false;
+        el('campoSenha').value = '';
+      } else if (j.erro === 'senha') {
+        mensagem('Senha errada. Restam ' + j.restam + ' tentativa(s).');
+      } else if (j.erro === 'bloqueado') {
+        mensagem('Muitas tentativas erradas. Tente de novo em ' + j.espera_s + ' s.');
+      } else {
+        mensagem('Valores fora da faixa: limite de 30 a 120 dB e X de 1 a 600 s.');
+      }
+    })
+    .catch(function () { mensagem('Sem resposta do aparelho.'); });
+};
+
+// ---------- Modo demonstração (página aberta fora do ESP32) ----------
+function iniciarDemo() {
+  indicar('demo');
+  var db = 42, alvo = 40, fimRajada = 0, proxRajada = Date.now() + 3000;
+  var estado = 'calmo', inicio = 0, abaixoDesde = 0, n = 0, evento = 'nenhum', limite = 65, x = 5;
+  setInterval(function () {
+    var agora = Date.now();
+    if (agora > proxRajada && agora > fimRajada) {   // começa uma rajada de 2 a 8 s
+      alvo = 60 + Math.random() * 30;
+      fimRajada = agora + 2000 + Math.random() * 6000;
+      proxRajada = fimRajada + 4000 + Math.random() * 8000;
+    }
+    if (agora > fimRajada) alvo = 35 + Math.random() * 10;
+    if (el('demoAlto').checked) alvo = 80;
+    db = db * 0.7 + alvo * 0.3 + (Math.random() - 0.5) * 2;
+    var semSinal = el('demoSemSinal').checked;
+
+    // Regra simplificada, só para o visual (a de verdade roda no ESP32).
+    if (semSinal) { if (estado !== 'sem_sinal') { estado = 'sem_sinal'; n++; evento = 'perdeu_sinal'; } }
+    else if (estado === 'sem_sinal') estado = 'calmo';
+    else if (estado === 'calmo' && db > limite) { estado = 'contando'; inicio = agora; }
+    else if (estado === 'contando') {
+      if (db < limite - 3) estado = 'calmo';
+      else if (agora - inicio >= x * 1000) { estado = 'alerta'; n++; evento = 'disparou'; abaixoDesde = 0; }
+    } else if (estado === 'alerta') {
+      if (db < limite - 3) {
+        if (!abaixoDesde) abaixoDesde = agora;
+        if (agora - abaixoDesde >= 2000) { estado = 'calmo'; n++; evento = 'normalizou'; }
+      } else abaixoDesde = 0;
+    }
+    mostrar({db: db, a: semSinal ? null : db - 0.8, b: semSinal ? null : db + 0.8, valido: !semSinal,
+             estado: estado, acima_ms: estado === 'calmo' || semSinal ? 0 : agora - inicio,
+             limite: limite, x: x, evento: evento, evento_n: n});
+  }, 125);
+}
+
+// ---------- Início ----------
+if (DEMO) {
+  iniciarDemo();
+} else {
+  pedirStatus();
+  conectarWs();
+  setInterval(vigiar, 1000);
+}
+</script>
+</body>
+</html>
+)PAGINA_NT";
