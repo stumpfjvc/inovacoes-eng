@@ -74,5 +74,8 @@ servida pelo próprio ESP32.
 9. Wi-Fi não bloqueante, AP de setup, `noisetrack.local` e NTP (mesclada na
    `main`, PR #11). O portal do AP usa HTTP puro. Flash em 66,5% depois desta
    parte.
-10. Página no ESP32 com WebSocket, polling de reserva e senha
-11. Calibração na placa, com `USANDO_WOKWI` e `FONTE_SIMULADA` em 0
+10. Página no ESP32 com WebSocket, polling de reserva e senha (mesclada na
+    `main`, PR #12). Flash em 68,5% (pior caso 69,4% com microfone real);
+    `platformio.ini` não foi alterado.
+11. Calibração na placa, com `USANDO_WOKWI` e `FONTE_SIMULADA` em 0. Depende
+    da placa; o guia está em `firmware/noisetrack/GUIA_BANCADA.md`.
