@@ -134,8 +134,8 @@ Nenhum áudio é gravado, armazenado ou enviado.
 | Firmware: buzzer e alerta local sem Wi-Fi | Pronto |
 | Firmware: receber e guardar a configuração | Pronto |
 | Firmware: Wi-Fi, AP de setup, mDNS e NTP | Pronto |
-| Página de configuração servida pelo ESP32 | Em desenvolvimento |
-| Aviso ao porteiro na página aberta | Em desenvolvimento |
+| Página de configuração servida pelo ESP32 | Pronto (testado no Wokwi e no PC; falta a placa) |
+| Aviso ao porteiro na página aberta | Pronto (testado no Wokwi e no PC; falta a placa) |
 | Calibração com decibelímetro | Pendente |
 | Case impresso em 3D | Pendente |
 | Testes em campo | Pendente |
