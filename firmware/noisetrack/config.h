@@ -97,12 +97,16 @@ static_assert((FREQ_AMOSTRAGEM_HZ * JANELA_MS) % 1000 == 0,
 // Amostras de cada canal numa janela: 16000 * 125 / 1000 = 2000.
 constexpr size_t AMOSTRAS_POR_JANELA = FREQ_AMOSTRAGEM_HZ * JANELA_MS / 1000;
 
-// Teste: imprime no Serial o nível em dB de cada canal a cada janela.
-// Remover na Parte 7.
-#define DEBUG_AUDIO 1
+// ================== TAREFA DE ÁUDIO (Parte 7) ==================
+// Leitura, dB, regra, LEDs e buzzer rodam numa tarefa FreeRTOS própria
+// (parecida com uma Thread do Java), separada do loop().
+constexpr uint32_t PILHA_TAREFA_AUDIO      = 8192;   // bytes; o mesmo que o loop() tem
+constexpr UBaseType_t PRIORIDADE_TAREFA_AUDIO = 2;   // o loop() roda com prioridade 1
+constexpr BaseType_t  NUCLEO_TAREFA_AUDIO     = 1;   // o Wi-Fi (Parte 9) fica no núcleo 0
 
-// ================== DEMONSTRAÇÃO DAS SAÍDAS ==================
-// 1 = alterna calmo -> contando -> alerta sozinho, para testar LEDs e buzzer.
-// 0 = LEDs e buzzer seguem a regra real dos X segundos (Parte 6).
-#define MODO_DEMO_SAIDAS 0
-constexpr uint32_t DEMO_PASSO_MS = 2000;
+// Leituras do I2S que podem falhar seguidas antes de virar SEM_SINAL.
+constexpr uint32_t FALHAS_ATE_SEM_SINAL = 5;
+
+// Autoteste da tarefa: depois de 3 s, confere se as janelas estão avançando
+// (cerca de 8 por segundo) e mostra quanto sobrou da pilha.
+#define TESTE_TAREFA 1
