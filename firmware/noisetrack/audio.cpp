@@ -129,14 +129,17 @@ static void atualizarNivel(uint32_t agora) {
   nivelDb = nivelDb * 0.6f + alvo * 0.4f + random(-15, 16) / 10.0f;
 }
 
-// Enche o canal com ruído uniforme cujo RMS corresponde a "db".
+// Desvio DC fixo, como o do INMP441 real, para mostrar a Parte 5 removendo-o.
+static constexpr int32_t SIM_DESVIO_DC = 30000;
+
+// Enche o canal com ruído uniforme cujo RMS corresponde a "db", mais o desvio DC.
 // Ruído uniforme entre -a e +a tem RMS = a / raiz(3); por isso a = RMS * raiz(3).
 static void gerarCanal(int32_t* destino, float db) {
   float amplitude = rmsDeDb(db) * 1.7320508f;
   if (amplitude > MIC_FUNDO_ESCALA) amplitude = MIC_FUNDO_ESCALA;   // satura como o mic real
   for (size_t i = 0; i < AMOSTRAS_POR_JANELA; i++) {
     const float u = (sorteio32() / 4294967295.0f) * 2.0f - 1.0f;   // de -1 a +1
-    destino[i] = (int32_t)(u * amplitude);
+    destino[i] = (int32_t)(u * amplitude) + SIM_DESVIO_DC;
   }
 }
 
