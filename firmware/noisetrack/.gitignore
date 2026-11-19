@@ -4,6 +4,9 @@
 # Segredos locais (ver secrets.example.h). Nunca enviar ao Git.
 secrets.h
 
+# Configuração local da placa (ver config_local.example.h). Nunca enviar ao Git.
+config_local.h
+
 # Arquivos do VS Code gerados automaticamente
 .vscode/c_cpp_properties.json
 .vscode/launch.json
