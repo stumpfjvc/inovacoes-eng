@@ -94,7 +94,23 @@ constexpr uint8_t PINO_BUZZER = 27;
 #ifndef BUZZER_ATIVO_EM_BAIXO
 #define BUZZER_ATIVO_EM_BAIXO 0
 #endif
-constexpr uint32_t BUZZER_BIPE_MS = 500;   // bipe intermitente: 500 ms ligado, 500 ms desligado
+// Bipe em pulsos durante o alerta: BUZZER_PULSO_MS ligado, BUZZER_PAUSA_MS desligado.
+// O buzzer é atualizado uma vez por janela (JANELA_MS = 125), então os tempos
+// arredondam para o múltiplo de 125 ms mais próximo (250 = 2 janelas, 750 = 6).
+#ifndef BUZZER_PULSO_MS
+#define BUZZER_PULSO_MS 250
+#endif
+#ifndef BUZZER_PAUSA_MS
+#define BUZZER_PAUSA_MS 750
+#endif
+// Contra a realimentação (o microfone ouvindo o próprio apito): uma janela que
+// pegou o buzzer ligado, ou que começou menos de BUZZER_GUARDA_MS depois de ele
+// desligar, não entra na regra. A regra só usa as janelas das pausas.
+#ifndef BUZZER_GUARDA_MS
+#define BUZZER_GUARDA_MS 80
+#endif
+static_assert(BUZZER_PULSO_MS > 0 && BUZZER_PAUSA_MS > 0, "pulso e pausa do buzzer devem ser > 0");
+// (A conferência da pausa contra a guarda fica depois de JANELA_MS, em TEMPOS.)
 
 // ================== REGRA DE ALERTA (valores padrão) ==================
 // Usados enquanto não houver configuração salva na memória (Parte 8).
@@ -121,6 +137,11 @@ constexpr uint32_t HOLD_MS = 2000;
 // ================== TEMPOS ==================
 constexpr uint32_t JANELA_MS    = 125;    // duração de cada janela de medição (Parte 5)
 constexpr uint32_t BATIMENTO_MS = 1000;   // intervalo da mensagem de "vivo" no Serial
+
+// Sem isto, a pausa do buzzer poderia não ter nenhuma janela limpa e o alerta
+// nunca mais seria reavaliado. Guarda + 2 janelas garante ao menos uma limpa.
+static_assert(BUZZER_PAUSA_MS >= BUZZER_GUARDA_MS + 2 * JANELA_MS,
+              "BUZZER_PAUSA_MS curta demais: nenhuma janela da pausa ficaria fora da guarda");
 
 // ================== ÁUDIO ==================
 constexpr uint32_t FREQ_AMOSTRAGEM_HZ = 16000;   // amostras por segundo, por canal
@@ -171,6 +192,16 @@ constexpr float OFFSET_CAL_MAX_DB = 20.0f;
 #define CALIBRACAO 0
 #endif
 constexpr uint32_t CALIB_PERIODO_MS = 5000;
+
+// ================== DIAGNÓSTICO DO MICROFONE (temporário) ==================
+// 1 = a cada 1 s, imprime no Serial uma linha [diag] do mic A: mínimo, máximo e
+// média das amostras brutas de 24 bits da última janela, o RMS em dBFS (antes de
+// qualquer offset de calibração) e o canal lido (esquerdo/direito). Só imprime,
+// não muda regra, LEDs, buzzer nem rede. Ligar no config_local.h: DIAG_MIC 1.
+#ifndef DIAG_MIC
+#define DIAG_MIC 0
+#endif
+constexpr uint32_t DIAG_MIC_PERIODO_MS = 1000;
 
 // ================== REDE (Parte 9) ==================
 // Tempo máximo da primeira tentativa de conexão antes de ligar o AP de setup.

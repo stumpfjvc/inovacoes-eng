@@ -40,6 +40,12 @@
 // Se mesmo assim apitar sempre e calar no alerta, troque para 0.
 #define BUZZER_ATIVO_EM_BAIXO 1
 
+// Pulsos do alerta e guarda contra a realimentação (padrões do config.h).
+// Descomente para mudar. A pausa precisa ser >= guarda + 250 ms.
+// #define BUZZER_PULSO_MS  250
+// #define BUZZER_PAUSA_MS  750
+// #define BUZZER_GUARDA_MS 80
+
 // ---------- Comandos no Serial ----------
 // 1 = "limite N", "x N", "wifi", "wifi apagar", "web", "etiqueta"
 // (e "80"/"auto" se FONTE_SIMULADA 1). 0 = o Serial não lê nada.
@@ -49,6 +55,11 @@
 // Seção 5 do guia: troque para 1 (com FONTE_SIMULADA 0). Em vez de 8 linhas
 // [nivel] por segundo, sai uma linha [calib] a cada 5 s com a média de A, B e comb.
 #define CALIBRACAO 0
+
+// ---------- Diagnóstico do microfone (temporário) ----------
+// 1 = uma linha [diag] por segundo com mín/máx/média das amostras brutas do mic A,
+// RMS em dBFS e o canal lido. 0 = desligado (padrão do config.h).
+#define DIAG_MIC 0
 
 // ---------- Autotestes (rodam uma vez na partida) ----------
 // Na bancada, deixe todos em 1. Antes de instalar: TESTE_PREFS 0 (ele grava
