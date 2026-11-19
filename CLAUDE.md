@@ -79,3 +79,26 @@ servida pelo próprio ESP32.
     `platformio.ini` não foi alterado.
 11. Calibração na placa, com `USANDO_WOKWI` e `FONTE_SIMULADA` em 0. Depende
     da placa; o guia está em `firmware/noisetrack/GUIA_BANCADA.md`.
+    Ajustes de bancada (branch `feature/bancada-ajustes`):
+    - Comandos do Serial também na placa real (`COMANDOS_SERIAL`, padrão 1):
+      `wifi`, `wifi apagar`, `web`, `limite N`, `x N` e `etiqueta`. O nível
+      forçado (`80`, `auto`) só com `FONTE_SIMULADA` 1. `limite`/`x` não
+      dependem mais de `TESTE_PREFS`.
+    - `config_local.h` (fora do Git; modelo em `config_local.example.h`)
+      sobrescreve as chaves do `config.h`, que viraram `#ifndef`. Os
+      `constexpr` leem `LOCAL_MIC_CANAIS_TROCADOS` e
+      `LOCAL_OFFSET_CAL_MIC_A_DB`/`_B_DB`.
+    - `CALIBRACAO` (padrão 0): troca o `[nivel]` por uma linha `[calib]` a cada
+      5 s com a média em energia (`calibracao.cpp`, função pura).
+
+## Bancada
+- **Não editar o `config.h` para a bancada.** Ele fica com os valores do Wokwi
+  (`USANDO_WOKWI` 1, `FONTE_SIMULADA` 1, `BUZZER_ATIVO_EM_BAIXO` 0). A placa
+  usa `config_local.h`, que não vai para o Git.
+- Hardware real: ESP32 NodeMCU ESP-32S de 38 pinos (botões EN = reset e
+  IO0 = BOOT); 2 INMP441 (SCK, WS, L/R, SD, VDD, GND); buzzer de 3 pinos
+  (GND, I/O, VCC) acionado em nível BAIXO, então `BUZZER_ATIVO_EM_BAIXO` 1 na
+  bancada; módulo de 4 LEDs HW-222 sem pinos, ligado pelo lado J2 (IN, VCC,
+  GND) com fios soldados; protoboard de 830 pontos e jumpers macho-macho.
+- Alimentação na bancada: VDD dos microfones e VCC do buzzer em 3V3; VCC dos
+  LEDs em 5V (3V3 se falhar).
