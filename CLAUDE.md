@@ -21,8 +21,11 @@ servida pelo próprio ESP32.
 - `platformio.ini` tem `src_dir = .`: o código fica na própria pasta do projeto.
 - Os acentos do `platformio.ini` estão certos; o PowerShell é que os exibe mal.
   Não regravar o arquivo.
-- O comando `pio` não está no PATH. Usar
-  `C:\.platformio\penv\Scripts\platformio.exe`.
+- O comando `pio` não está no PATH. O PlatformIO fica na pasta `.platformio`
+  do usuário, e o caminho muda de PC para PC. Exemplos:
+  `C:\.platformio\penv\Scripts\platformio.exe` e
+  `C:\Users\<usuario>\.platformio\penv\Scripts\platformio.exe`. Confirmar onde
+  está antes de usar. O jeito mais simples de compilar é o botão Build do VS Code.
 - Compilar sem `-v`: na 6.9.0 o modo detalhado dá um erro de impressão inofensivo.
 - Se voltar o erro "can't create .o", esperar o VS Code terminar de indexar e
   rodar de novo, sem apagar a `.pio`.

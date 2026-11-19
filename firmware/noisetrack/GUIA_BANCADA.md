@@ -107,10 +107,13 @@ Chaves do `config_local.h` e o valor do exemplo da bancada:
 - No VS Code (PlatformIO): botão **✓ (Build)** só compila; botão **→ (Upload)**
   compila e grava; botão da **tomada (Serial Monitor)** abre o monitor. A
   velocidade já é 115200 (`monitor_speed` no `platformio.ini`).
-- Pela linha de comando, na pasta `firmware/noisetrack/`:
-  `C:\.platformio\penv\Scripts\platformio.exe run -t upload` e depois
-  `C:\.platformio\penv\Scripts\platformio.exe device monitor -b 115200`
-  (troque o caminho se o PlatformIO estiver instalado em outra pasta).
+- O jeito mais simples é o botão **Build** do VS Code. Pela linha de comando,
+  o `pio` não está no PATH: o PlatformIO fica na pasta `.platformio` do usuário,
+  e o caminho muda de PC para PC. Exemplos:
+  `C:\.platformio\penv\Scripts\platformio.exe` e
+  `C:\Users\<usuario>\.platformio\penv\Scripts\platformio.exe`. Na pasta
+  `firmware/noisetrack/`, com o caminho do seu PC no lugar de `platformio.exe`:
+  `platformio.exe run -t upload` e depois `platformio.exe device monitor -b 115200`.
 - Se a gravação parar em `Connecting........_____`, segure o botão **IO0
   (BOOT)** até começar a gravar.
 - Para ver a partida desde o começo, aperte o **EN** com o monitor aberto.
