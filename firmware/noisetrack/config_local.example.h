@@ -35,6 +35,13 @@
 #define LOCAL_OFFSET_CAL_MIC_A_DB 0.0f
 #define LOCAL_OFFSET_CAL_MIC_B_DB 0.0f
 
+// Filtro passa-alta antes do RMS e aquecimento do microfone (padrões do config.h).
+// Descomente para mudar. FILTRO_PASSA_ALTA 0 volta à conta antiga (só a média);
+// AQUECIMENTO_MIC_MS 0 tira o aquecimento.
+// #define FILTRO_PASSA_ALTA  1
+// #define FILTRO_HZ          200
+// #define AQUECIMENTO_MIC_MS 5000
+
 // ---------- Buzzer ----------
 // O módulo da bancada é marcado "低电平触发" (acionado em nível BAIXO): 1.
 // Se mesmo assim apitar sempre e calar no alerta, troque para 0.

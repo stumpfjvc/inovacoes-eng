@@ -12,9 +12,42 @@ static float limitar(float v, float minimo, float maximo) {
   return v;
 }
 
-float nivel_dbfs(const int32_t* amostras, size_t n, bool* valido) {
+void FiltroPassaAlta::configurar(double corteHz, double taxaHz) {
+  // Mesmo método do teste-mic: k = tan(pi * corte / taxa) e Q = 1 / raiz(2).
+  const double k    = tan(M_PI * corteHz / taxaHz);
+  const double raiz = sqrt(2.0);
+  const double norm = 1.0 / (1.0 + raiz * k + k * k);
+  b0 = norm;
+  b1 = -2.0 * norm;
+  b2 = norm;
+  a1 = 2.0 * (k * k - 1.0) * norm;
+  a2 = (1.0 - raiz * k + k * k) * norm;
+  x1 = x2 = y1 = y2 = 0.0;
+}
+
+// Caminho com filtro: cada amostra passa pelo passa-alta e o RMS é da saída.
+// O filtro roda mesmo numa janela sem variação, para o estado seguir contínuo.
+static float dbfsFiltrado(const int32_t* amostras, size_t n, bool* valido,
+                          FiltroPassaAlta* filtro) {
+  bool   variou        = false;
+  double somaQuadrados = 0.0;
+  for (size_t i = 0; i < n; i++) {
+    if (amostras[i] != amostras[0]) variou = true;
+    const double y = filtro->processar((double)amostras[i]);
+    somaQuadrados += y * y;
+  }
+  if (!variou) return DBFS_PISO;   // todas iguais: mic desligado ou silêncio absoluto
+
+  const double rms = sqrt(somaQuadrados / (double)n);
+  if (!(rms > 0.0)) return DBFS_PISO;
+  *valido = true;
+  return 20.0f * log10f((float)(rms / MIC_FUNDO_ESCALA));
+}
+
+float nivel_dbfs(const int32_t* amostras, size_t n, bool* valido, FiltroPassaAlta* filtro) {
   *valido = false;
   if (amostras == nullptr || n == 0) return DBFS_PISO;
+  if (filtro != nullptr) return dbfsFiltrado(amostras, n, valido, filtro);
 
   // 1) Desvio DC: soma todas as amostras e divide por n para achar a média.
   //    int64_t é como o long do Java: 2000 amostras de 24 bits cabem com folga.
@@ -66,19 +99,22 @@ float nivel_combinar(float dbA, float dbB, int modo) {
   return 10.0f * log10f((energiaA + energiaB) / 2.0f);
 }
 
-static float nivelCanal(const int32_t* amostras, size_t n, float ajusteCalDb, bool* valido) {
-  const float dbfs = nivel_dbfs(amostras, n, valido);
-  return *valido ? nivel_spl_de_dbfs(dbfs, ajusteCalDb) : DB_PISO;
+static float nivelCanal(const int32_t* amostras, size_t n, float ajusteCalDb,
+                        FiltroPassaAlta* filtro, float* dbfs, bool* valido) {
+  *dbfs = nivel_dbfs(amostras, n, valido, filtro);
+  return *valido ? nivel_spl_de_dbfs(*dbfs, ajusteCalDb) : DB_PISO;
 }
 
-NivelDb nivel_calcular(const int32_t* canalA, const int32_t* canalB, size_t n) {
+NivelDb nivel_calcular(const int32_t* canalA, const int32_t* canalB, size_t n,
+                       FiltroPassaAlta* filtroA, FiltroPassaAlta* filtroB) {
   NivelDb r = {};
-  r.dbA = nivelCanal(canalA, n, OFFSET_CAL_MIC_A_DB, &r.validoA);
+  r.dbA = nivelCanal(canalA, n, OFFSET_CAL_MIC_A_DB, filtroA, &r.dbfsA, &r.validoA);
 
   if (canalB != nullptr) {
-    r.dbB = nivelCanal(canalB, n, OFFSET_CAL_MIC_B_DB, &r.validoB);
+    r.dbB = nivelCanal(canalB, n, OFFSET_CAL_MIC_B_DB, filtroB, &r.dbfsB, &r.validoB);
   } else {
-    r.dbB = DB_PISO;
+    r.dbB     = DB_PISO;
+    r.dbfsB   = DBFS_PISO;
     r.validoB = false;
   }
 
