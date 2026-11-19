@@ -67,11 +67,76 @@ static void publicar(const NivelDb& n, const RegraSaida& r, uint32_t falhas) {
   destravar();
 }
 
+#if DIAG_MIC
+// Nível das janelas com apito e das janelas da pausa, para ver quanto o buzzer
+// soma no microfone. diagRegistrar() roda a cada janela; diagnosticoMic() imprime.
+static float    diagApitoMaxDb = 0.0f;   // maior nível com apito desde a última linha
+static uint32_t diagApitoN     = 0;      // janelas com apito desde a última linha
+static float    diagPausaDb    = 0.0f;   // nível da última janela da pausa
+static bool     diagTemPausa   = false;
+
+static void diagRegistrar(const NivelDb& n, bool contaminada) {
+  if (!n.validoCombinado) return;
+  if (contaminada) {
+    if (diagApitoN == 0 || n.dbCombinado > diagApitoMaxDb) diagApitoMaxDb = n.dbCombinado;
+    diagApitoN++;
+  } else {
+    diagPausaDb  = n.dbCombinado;
+    diagTemPausa = true;
+  }
+}
+
+// Diagnóstico temporário do mic A (config.h, DIAG_MIC). Só lê a janela e imprime.
+// Usa a última janela lida a cada DIAG_MIC_PERIODO_MS. Os valores brutos já são os
+// de 24 bits (audio.cpp deslocou 8 casas). O dBFS vem de nivel_dbfs(), a mesma
+// conta do nível (tira o desvio DC e calcula o RMS), sem nenhum offset de calibração.
+static void diagnosticoMic(const int32_t* amostras, size_t n, uint32_t agora) {
+  static uint32_t ultimo = 0;
+  if ((uint32_t)(agora - ultimo) < DIAG_MIC_PERIODO_MS) return;
+  ultimo = agora;
+
+  int32_t minimo = amostras[0], maximo = amostras[0];
+  int64_t soma = 0;
+  for (size_t i = 0; i < n; i++) {
+    if (amostras[i] < minimo) minimo = amostras[i];
+    if (amostras[i] > maximo) maximo = amostras[i];
+    soma += amostras[i];
+  }
+  const float media = (float)((double)soma / (double)n);
+
+  bool valido = false;
+  const float dbfs = nivel_dbfs(amostras, n, &valido);
+
+#if FONTE_SIMULADA
+  const char* canal = "simulado";
+#else
+  const char* canal = MIC_CANAIS_TROCADOS ? "direito" : "esquerdo";
+#endif
+  Serial.printf("[diag] mic A, canal %s: min=%ld max=%ld media=%.1f rms=%.1f dBFS%s\n",
+                canal, (long)minimo, (long)maximo, media, dbfs,
+                valido ? "" : " (SEM VARIACAO)");
+
+  // Só aparece no último segundo em que o buzzer tocou (durante o alerta).
+  if (diagApitoN > 0) {
+    Serial.printf("[diag] apito: max %.1f dB (%lu janelas)", diagApitoMaxDb,
+                  (unsigned long)diagApitoN);
+    if (diagTemPausa) {
+      Serial.printf(" | pausa: %.1f dB | diferenca %+.1f dB\n", diagPausaDb,
+                    diagApitoMaxDb - diagPausaDb);
+    } else {
+      Serial.println(" | pausa: --");
+    }
+    diagApitoN = 0;
+  }
+}
+#endif
+
 // ---------- A tarefa ----------
 // Como o run() de uma Thread do Java: um laço que nunca termina.
 static void tarefaAudio(void*) {
   uint32_t   falhas          = 0;
   TickType_t ultimoDespertar = xTaskGetTickCount();
+  NivelDb    nivelPausa      = nivelSemSinal();   // última janela que a regra pôde usar
 
   for (;;) {
 #if FONTE_SIMULADA
@@ -84,9 +149,19 @@ static void tarefaAudio(void*) {
     const uint32_t agora = millis();
 
     NivelDb nivel;
+    bool    contaminada = false;   // esta janela pode ter ouvido o próprio apito?
     if (leu) {
       falhas = 0;
       nivel  = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA);
+      // A janela cobre mais ou menos os últimos JANELA_MS antes de "agora".
+      // Fica de fora se o buzzer esteve ligado nela ou desligou menos de
+      // BUZZER_GUARDA_MS antes de ela começar (o som e o eco ainda no ar).
+      // Precisa ser checado ANTES do buzzer_atualizar desta volta.
+      contaminada = buzzer_tocou_desde(agora - JANELA_MS - BUZZER_GUARDA_MS);
+#if DIAG_MIC
+      diagRegistrar(nivel, contaminada);
+      diagnosticoMic(janelaA, AMOSTRAS_POR_JANELA, agora);
+#endif
     } else {
       if (falhas < FALHAS_ATE_SEM_SINAL) falhas++;
       if (falhas < FALHAS_ATE_SEM_SINAL) {
@@ -97,6 +172,22 @@ static void tarefaAudio(void*) {
       }
       nivel = nivelSemSinal();   // N falhas seguidas: trata como sem sinal
     }
+
+    if (contaminada) {
+      // Apito ou guarda: a regra não vê esta janela. O estado e o tempo acima
+      // ficam parados, e o nível publicado é o da última janela da pausa.
+      // Assim a decisão de continuar ou sair do alerta usa só as pausas.
+      RegraSaida parada = {};
+      parada.estado  = regra.estado();
+      parada.mudou   = false;
+      parada.evento  = EventoRegra::NENHUM;
+      parada.acimaMs = regra.acimaMs();
+      leds_mostrar(parada.estado);
+      buzzer_atualizar(parada.estado == Estado::ALERTA, agora);   // mantém o ritmo dos pulsos
+      publicar(nivelPausa, parada, falhas);
+      continue;
+    }
+    if (leu) nivelPausa = nivel;   // última janela limpa (da pausa ou fora do alerta)
 
     // Limite e X atuais (podem ter sido mudados pela Parte 8 ou pela página).
     travar();

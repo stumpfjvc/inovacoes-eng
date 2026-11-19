@@ -385,7 +385,9 @@ Confira `BUZZER_ATIVO_EM_BAIXO 1` no `config_local.h`. Religue.
 - Apita sempre e não muda nada: confira se o fio está no `P27` e não no `VCC`, e
   se o `VCC` do buzzer está no `3V3` (no 5V ele pode não calar).
 - Não apita nunca: confira o `VCC` no `3V3` e o `GND`.
-- Ritmo do bipe: `BUZZER_BIPE_MS` no `config.h` (hoje 500).
+- Ritmo do bipe: `BUZZER_PULSO_MS` (250) ligado e `BUZZER_PAUSA_MS` (750)
+  desligado; `BUZZER_GUARDA_MS` (80) é o tempo depois do apito em que o nível
+  ainda não conta. Para mudar, defina no `config_local.h`.
 
 ### (d) Um microfone
 
