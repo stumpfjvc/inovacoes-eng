@@ -71,6 +71,8 @@ servida pelo próprio ESP32.
    `main`, PR #9). A pilha da tarefa usa cerca de 1,5 KB no Wokwi (6720 de
    8192 bytes livres); confirmar na placa antes de reduzir.
 8. Limite e X em `Preferences`, com padrões 65 dB e 5 s (mesclada na `main`, PR #10)
-9. Wi-Fi não bloqueante, AP de setup, `noisetrack.local` e NTP
+9. Wi-Fi não bloqueante, AP de setup, `noisetrack.local` e NTP (mesclada na
+   `main`, PR #11). O portal do AP usa HTTP puro. Flash em 66,5% depois desta
+   parte.
 10. Página no ESP32 com WebSocket, polling de reserva e senha
 11. Calibração na placa, com `USANDO_WOKWI` e `FONTE_SIMULADA` em 0
