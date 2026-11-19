@@ -51,6 +51,12 @@ servida pelo próprio ESP32.
 - Sem sinal nos dois microfones é ERRO (estado próprio `SEM_SINAL`, sem alerta,
   com cor própria no LED), e não "calmo".
 - Padrão: 65 dB e X = 5 s.
+- Senha do AP de setup gerada a partir do MAC da placa com um segredo
+  (`WIFI_AP_SEGREDO` em `secrets.h`, fora do Git; `secrets.example.h` mostra o
+  formato).
+- Credenciais do Wi-Fi do local em `Preferences` (namespace `wifi`), nunca no
+  código nem no Git.
+- Nada do aparelho sai pela rede na Parte 9, exceto o NTP.
 - Nada pago.
 
 ## Plano por partes
@@ -64,7 +70,7 @@ servida pelo próprio ESP32.
 7. Alerta local numa tarefa FreeRTOS, sem depender de Wi-Fi (mesclada na
    `main`, PR #9). A pilha da tarefa usa cerca de 1,5 KB no Wokwi (6720 de
    8192 bytes livres); confirmar na placa antes de reduzir.
-8. Limite e X em `Preferences`, com padrões 65 dB e 5 s
+8. Limite e X em `Preferences`, com padrões 65 dB e 5 s (mesclada na `main`, PR #10)
 9. Wi-Fi não bloqueante, AP de setup, `noisetrack.local` e NTP
 10. Página no ESP32 com WebSocket, polling de reserva e senha
 11. Calibração na placa, com `USANDO_WOKWI` e `FONTE_SIMULADA` em 0

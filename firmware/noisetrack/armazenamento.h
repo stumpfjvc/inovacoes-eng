@@ -3,6 +3,7 @@
 // milissegundos, e a tarefa de áudio nunca pode esperar por isso.
 #pragma once
 #include <stdint.h>
+#include <stddef.h>
 
 // Resultado de uma gravação.
 struct ResultadoSalvar {
@@ -27,3 +28,14 @@ int armazenamento_tempo_x_s();
 // Ainda NÃO entra na conta de dB: lá continuam OFFSET_CAL_MIC_A/B_DB do config.h.
 float           armazenamento_offset_cal(int mic);   // 0.0 se não houver valor guardado
 ResultadoSalvar armazenamento_salvar_offset_cal(int mic, float db);
+
+// Wi-Fi do local (namespace "wifi", chaves "ssid" e "senha"), Parte 9.
+constexpr size_t WIFI_TAM_SSID  = 33;   // 32 caracteres + fim do texto
+constexpr size_t WIFI_TAM_SENHA = 64;   // 63 caracteres + fim do texto
+
+// Lê a rede salva. Devolve false (e textos vazios) se não houver uma válida.
+bool armazenamento_wifi_ler(char* ssid, size_t tamSsid, char* senha, size_t tamSenha);
+// Valida (nome de 1 a 32, senha vazia ou de 8 a 63) e grava só o que mudou.
+ResultadoSalvar armazenamento_wifi_salvar(const char* ssid, const char* senha);
+// Apaga a rede salva. Devolve false se a memória não abriu.
+bool armazenamento_wifi_apagar();

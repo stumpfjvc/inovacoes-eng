@@ -1,6 +1,9 @@
 # Arquivos gerados pelo PlatformIO (compilação e bibliotecas baixadas)
 .pio/
 
+# Segredos locais (ver secrets.example.h). Nunca enviar ao Git.
+secrets.h
+
 # Arquivos do VS Code gerados automaticamente
 .vscode/c_cpp_properties.json
 .vscode/launch.json

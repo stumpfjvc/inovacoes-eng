@@ -4,7 +4,9 @@
 #include "armazenamento.h"
 #include "config.h"
 #include "tarefa_audio.h"
+#include "rede_logica.h"
 #include <Preferences.h>
+#include <string.h>
 
 static constexpr const char* NAMESPACE      = "noisetrack";
 static constexpr const char* CHAVE_LIMITE   = "limite_db";
@@ -93,4 +95,70 @@ ResultadoSalvar armazenamento_salvar_offset_cal(int mic, float db) {
   }
   r.gravou = true;
   return r;
+}
+
+// ---------- Wi-Fi do local (namespace "wifi") ----------
+static constexpr const char* NAMESPACE_WIFI = "wifi";
+static constexpr const char* CHAVE_SSID     = "ssid";
+static constexpr const char* CHAVE_SENHA    = "senha";
+
+static Preferences prefsWifi;   // segundo namespace, aberto só quando for usado
+static bool        wifiAberto = false;
+
+static bool abrirWifi() {
+  if (!wifiAberto) wifiAberto = prefsWifi.begin(NAMESPACE_WIFI, false);
+  return wifiAberto;
+}
+
+// Lê um texto guardado; devolve "" se faltar.
+static void lerTexto(const char* chave, char* destino, size_t tam) {
+  destino[0] = '\0';
+  if (prefsWifi.isKey(chave)) prefsWifi.getString(chave, destino, tam);
+}
+
+// Grava um texto só se ele for diferente do que já está na flash.
+static bool gravarTextoSeMudou(const char* chave, const char* v, bool* erro) {
+  char atual[WIFI_TAM_SENHA];
+  lerTexto(chave, atual, sizeof(atual));
+  if (prefsWifi.isKey(chave) && strcmp(atual, v) == 0) return false;
+  if (prefsWifi.putString(chave, v) == 0 && v[0] != '\0') {   // texto vazio grava 0 bytes
+    *erro = true;
+    return false;
+  }
+  return true;
+}
+
+bool armazenamento_wifi_ler(char* ssid, size_t tamSsid, char* senha, size_t tamSenha) {
+  ssid[0] = '\0';
+  senha[0] = '\0';
+  if (!abrirWifi()) return false;
+  lerTexto(CHAVE_SSID, ssid, tamSsid);
+  lerTexto(CHAVE_SENHA, senha, tamSenha);
+  if (!rede_ssid_valido(ssid) || !rede_senha_valida(senha)) {   // vazio ou estragado
+    ssid[0] = '\0';
+    senha[0] = '\0';
+    return false;
+  }
+  return true;
+}
+
+ResultadoSalvar armazenamento_wifi_salvar(const char* ssid, const char* senha) {
+  ResultadoSalvar r = {};
+  if (!rede_ssid_valido(ssid) || !rede_senha_valida(senha)) return r;   // recusado
+  r.aceito = true;
+  if (!abrirWifi()) {
+    r.erroFlash = true;
+    return r;
+  }
+  const bool gravouSsid  = gravarTextoSeMudou(CHAVE_SSID, ssid, &r.erroFlash);
+  const bool gravouSenha = gravarTextoSeMudou(CHAVE_SENHA, senha, &r.erroFlash);
+  r.gravou = gravouSsid || gravouSenha;
+  return r;
+}
+
+bool armazenamento_wifi_apagar() {
+  if (!abrirWifi()) return false;
+  if (prefsWifi.isKey(CHAVE_SSID))  prefsWifi.remove(CHAVE_SSID);
+  if (prefsWifi.isKey(CHAVE_SENHA)) prefsWifi.remove(CHAVE_SENHA);
+  return true;
 }
