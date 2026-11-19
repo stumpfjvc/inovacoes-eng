@@ -32,6 +32,21 @@ static int32_t* const ptrJanelaB = nullptr;   // com 1 microfone, não há canal
 #endif
 static Regra regra;
 
+// Um passa-alta por canal: o estado de cada um passa de uma janela para a outra.
+#if FILTRO_PASSA_ALTA
+static FiltroPassaAlta  filtroA;
+static FiltroPassaAlta* const ptrFiltroA = &filtroA;
+#if NUM_MICROFONES == 2
+static FiltroPassaAlta  filtroB;
+static FiltroPassaAlta* const ptrFiltroB = &filtroB;
+#else
+static FiltroPassaAlta* const ptrFiltroB = nullptr;
+#endif
+#else
+static FiltroPassaAlta* const ptrFiltroA = nullptr;   // conta antiga, sem filtro
+static FiltroPassaAlta* const ptrFiltroB = nullptr;
+#endif
+
 static bool configValida(float limiteDb, int tempoXs) {
   return limiteDb >= LIMITE_MIN_DB && limiteDb <= LIMITE_MAX_DB &&
          tempoXs >= TEMPO_X_MIN_S && tempoXs <= TEMPO_X_MAX_S;
@@ -41,6 +56,7 @@ static bool configValida(float limiteDb, int tempoXs) {
 static NivelDb nivelSemSinal() {
   NivelDb n = {};
   n.dbA = n.dbB = n.dbCombinado = DB_PISO;
+  n.dbfsA = n.dbfsB = DB_PISO - OFFSET_BASE_DB;   // o piso em dBFS
   n.validoA = n.validoB = n.validoCombinado = false;
   n.canalDescartado = false;
   return n;
@@ -88,9 +104,12 @@ static void diagRegistrar(const NivelDb& n, bool contaminada) {
 
 // Diagnóstico temporário do mic A (config.h, DIAG_MIC). Só lê a janela e imprime.
 // Usa a última janela lida a cada DIAG_MIC_PERIODO_MS. Os valores brutos já são os
-// de 24 bits (audio.cpp deslocou 8 casas). O dBFS vem de nivel_dbfs(), a mesma
-// conta do nível (tira o desvio DC e calcula o RMS), sem nenhum offset de calibração.
-static void diagnosticoMic(const int32_t* amostras, size_t n, uint32_t agora) {
+// de 24 bits (audio.cpp deslocou 8 casas). Nenhum dos dBFS tem offset de calibração:
+//   rms      = só tira a média da janela (a conta antiga, sem filtro);
+//   filtrado = o dBFS que a medição usou (nivel.dbfsA), depois do passa-alta.
+// O "rms" é recalculado aqui sem filtro: não mexe no estado do filtro.
+static void diagnosticoMic(const int32_t* amostras, size_t n, uint32_t agora,
+                           const NivelDb& nivel, bool aquecendo) {
   static uint32_t ultimo = 0;
   if ((uint32_t)(agora - ultimo) < DIAG_MIC_PERIODO_MS) return;
   ultimo = agora;
@@ -112,9 +131,15 @@ static void diagnosticoMic(const int32_t* amostras, size_t n, uint32_t agora) {
 #else
   const char* canal = MIC_CANAIS_TROCADOS ? "direito" : "esquerdo";
 #endif
-  Serial.printf("[diag] mic A, canal %s: min=%ld max=%ld media=%.1f rms=%.1f dBFS%s\n",
-                canal, (long)minimo, (long)maximo, media, dbfs,
-                valido ? "" : " (SEM VARIACAO)");
+  Serial.printf("[diag] mic A, canal %s: min=%ld max=%ld media=%.1f rms=%.1f dBFS",
+                canal, (long)minimo, (long)maximo, media, dbfs);
+#if FILTRO_PASSA_ALTA
+  Serial.printf(" filtrado(%d Hz)=%.1f dBFS", FILTRO_HZ, nivel.dbfsA);
+#else
+  (void)nivel;
+  Serial.print(" filtrado=desligado");
+#endif
+  Serial.printf("%s%s\n", valido ? "" : " (SEM VARIACAO)", aquecendo ? " [aquecendo]" : "");
 
   // Só aparece no último segundo em que o buzzer tocou (durante o alerta).
   if (diagApitoN > 0) {
@@ -137,6 +162,10 @@ static void tarefaAudio(void*) {
   uint32_t   falhas          = 0;
   TickType_t ultimoDespertar = xTaskGetTickCount();
   NivelDb    nivelPausa      = nivelSemSinal();   // última janela que a regra pôde usar
+  // Aquecimento conta a partir daqui (logo depois do audio_iniciar() no setup).
+  // "aquecido" trava em true: quando millis() der a volta (~49 dias), não volta a aquecer.
+  const uint32_t tInicioAudio = millis();
+  bool           aquecido     = (AQUECIMENTO_MIC_MS == 0);
 
   for (;;) {
 #if FONTE_SIMULADA
@@ -148,11 +177,14 @@ static void tarefaAudio(void*) {
     const bool     leu   = audio_ler_janela(janelaA, ptrJanelaB);
     const uint32_t agora = millis();
 
+    if (!aquecido && (uint32_t)(agora - tInicioAudio) >= AQUECIMENTO_MIC_MS) aquecido = true;
+
     NivelDb nivel;
     bool    contaminada = false;   // esta janela pode ter ouvido o próprio apito?
     if (leu) {
       falhas = 0;
-      nivel  = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA);
+      // O filtro roda em toda janela lida, inclusive no aquecimento (para assentar).
+      nivel  = nivel_calcular(janelaA, ptrJanelaB, AMOSTRAS_POR_JANELA, ptrFiltroA, ptrFiltroB);
       // A janela cobre mais ou menos os últimos JANELA_MS antes de "agora".
       // Fica de fora se o buzzer esteve ligado nela ou desligou menos de
       // BUZZER_GUARDA_MS antes de ela começar (o som e o eco ainda no ar).
@@ -160,7 +192,7 @@ static void tarefaAudio(void*) {
       contaminada = buzzer_tocou_desde(agora - JANELA_MS - BUZZER_GUARDA_MS);
 #if DIAG_MIC
       diagRegistrar(nivel, contaminada);
-      diagnosticoMic(janelaA, AMOSTRAS_POR_JANELA, agora);
+      diagnosticoMic(janelaA, AMOSTRAS_POR_JANELA, agora, nivel, !aquecido);
 #endif
     } else {
       if (falhas < FALHAS_ATE_SEM_SINAL) falhas++;
@@ -171,6 +203,23 @@ static void tarefaAudio(void*) {
         continue;
       }
       nivel = nivelSemSinal();   // N falhas seguidas: trata como sem sinal
+    }
+
+    if (!aquecido) {
+      // Aquecimento: a janela já passou pelo filtro, mas é descartada. A regra
+      // não roda (não há como disparar alerta) e o nível publicado é "sem sinal".
+      RegraSaida aquecendo = {};
+      aquecendo.estado  = Estado::SEM_SINAL;
+      aquecendo.mudou   = false;
+      aquecendo.evento  = EventoRegra::NENHUM;
+      aquecendo.acimaMs = 0;
+      leds_mostrar(aquecendo.estado);
+      buzzer_atualizar(false, agora);
+      publicar(nivelSemSinal(), aquecendo, falhas);
+#if !FONTE_SIMULADA
+      if (!leu) vTaskDelay(pdMS_TO_TICKS(JANELA_MS));   // I2S parado: tenta de novo daqui a pouco
+#endif
+      continue;
     }
 
     if (contaminada) {
@@ -219,6 +268,13 @@ bool tarefa_audio_iniciar() {
 
   trava = xSemaphoreCreateMutex();
   if (trava == nullptr) return false;
+
+#if FILTRO_PASSA_ALTA
+  filtroA.configurar(FILTRO_HZ, FREQ_AMOSTRAGEM_HZ);
+#if NUM_MICROFONES == 2
+  filtroB.configurar(FILTRO_HZ, FREQ_AMOSTRAGEM_HZ);
+#endif
+#endif
 
   const BaseType_t ok = xTaskCreatePinnedToCore(
       tarefaAudio, "audio", PILHA_TAREFA_AUDIO, nullptr,

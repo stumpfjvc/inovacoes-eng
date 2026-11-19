@@ -66,6 +66,26 @@ constexpr float OFFSET_BASE_DB = MIC_REF_DB_SPL - MIC_SENSIBILIDADE_DBFS;
 constexpr float OFFSET_CAL_MIC_A_DB = LOCAL_OFFSET_CAL_MIC_A_DB;
 constexpr float OFFSET_CAL_MIC_B_DB = LOCAL_OFFSET_CAL_MIC_B_DB;
 
+// Filtro passa-alta antes do RMS: corta o ronco de baixa frequência (vento,
+// vibração da mesa, rede elétrica) que o INMP441 pega e que inflava o nível.
+// Butterworth de 2ª ordem, testado na placa no projeto teste-mic.
+// 1 = liga | 0 = conta antiga (só tira a média da janela).
+#ifndef FILTRO_PASSA_ALTA
+#define FILTRO_PASSA_ALTA 1
+#endif
+#ifndef FILTRO_HZ
+#define FILTRO_HZ 200
+#endif
+static_assert(FILTRO_HZ > 0, "FILTRO_HZ deve ser maior que 0");
+
+// Aquecimento: nos primeiros AQUECIMENTO_MIC_MS depois que a tarefa de áudio
+// começa, as janelas são lidas e passam pelo filtro (para ele assentar), mas
+// são descartadas: a regra não roda e o nível publicado fica "sem sinal".
+// 0 = sem aquecimento (como era antes).
+#ifndef AQUECIMENTO_MIC_MS
+#define AQUECIMENTO_MIC_MS 5000
+#endif
+
 // Faixa do resultado. Silêncio absoluto (RMS = 0) vira DB_PISO, nunca -infinito.
 constexpr float DB_PISO = 20.0f;
 constexpr float DB_TETO = 130.0f;
@@ -149,6 +169,8 @@ static_assert((FREQ_AMOSTRAGEM_HZ * JANELA_MS) % 1000 == 0,
               "JANELA_MS deve dar um número inteiro de amostras");
 // Amostras de cada canal numa janela: 16000 * 125 / 1000 = 2000.
 constexpr size_t AMOSTRAS_POR_JANELA = FREQ_AMOSTRAGEM_HZ * JANELA_MS / 1000;
+static_assert(FILTRO_HZ < FREQ_AMOSTRAGEM_HZ / 2,
+              "FILTRO_HZ deve ficar abaixo da metade da taxa de amostragem");
 
 // ================== TAREFA DE ÁUDIO (Parte 7) ==================
 // Leitura, dB, regra, LEDs e buzzer rodam numa tarefa FreeRTOS própria
