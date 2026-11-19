@@ -116,10 +116,14 @@ constexpr uint32_t FALHAS_ATE_SEM_SINAL = 5;
 constexpr float OFFSET_CAL_MIN_DB = -20.0f;
 constexpr float OFFSET_CAL_MAX_DB = 20.0f;
 
-// Autoteste da memória no setup e comandos "limite N" e "x N" no Serial
-// (só na fonte simulada). O autoteste grava na flash a cada partida:
+// Autoteste da memória no setup. Ele grava na flash a cada partida:
 // desligar (0) no aparelho instalado.
 #define TESTE_PREFS 1
+
+// ================== COMANDOS NO SERIAL ==================
+// 1 = lê comandos no Serial ("limite N", "x N", "wifi", "wifi apagar", "web",
+// "etiqueta" e, só com FONTE_SIMULADA 1, o nível forçado) | 0 = nada é lido.
+#define COMANDOS_SERIAL 1
 
 // ================== REDE (Parte 9) ==================
 // Tempo máximo da primeira tentativa de conexão antes de ligar o AP de setup.

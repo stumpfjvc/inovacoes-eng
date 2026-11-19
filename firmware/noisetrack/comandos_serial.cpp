@@ -1,14 +1,16 @@
-// NoiseTrack: comandos digitados no Serial (fonte simulada).
+// NoiseTrack: comandos digitados no Serial (placa real e fonte simulada).
 // Este é o único lugar que lê o Serial, e ele roda no loop(): a tarefa de áudio
 // não lê o Serial nem espera a flash.
 #include "comandos_serial.h"
 #include "config.h"
 
-#if FONTE_SIMULADA
-#include "audio.h"
+#if COMANDOS_SERIAL
 #include "armazenamento.h"
 #include "rede.h"
 #include "web.h"
+#if FONTE_SIMULADA
+#include "audio.h"
+#endif
 #include <string.h>
 #include <stdlib.h>
 
@@ -47,6 +49,14 @@ static void interpretarLinha(char* s) {
     return;
   }
 
+  // Etiqueta do aparelho: senha do AP de setup e senha Config da página.
+  if (strcmp(s, "etiqueta") == 0) {
+    char etiqueta[96];
+    rede_texto_etiqueta(etiqueta, sizeof(etiqueta));
+    Serial.printf("[rede] %s\n", etiqueta);
+    return;
+  }
+
   // Rede (Parte 9): só as linhas exatas "wifi" e "wifi apagar".
   if (strcmp(s, "wifi") == 0) {
     rede_imprimir_status();
@@ -65,7 +75,6 @@ static void interpretarLinha(char* s) {
     return;
   }
 
-#if TESTE_PREFS
   // "limite N" e "x N": o prefixo diferencia do nível forçado, que é só um número.
   if (strncmp(s, "limite ", 7) == 0) {
     if (lerInteiro(s + 7, &v)) {
@@ -84,8 +93,8 @@ static void interpretarLinha(char* s) {
     }
     return;
   }
-#endif
 
+#if FONTE_SIMULADA
   // Nível forçado da simulação: um número sozinho, ou "auto".
   if (strcmp(s, "auto") == 0) {
     audio_sim_forcar_nivel(-1);
@@ -98,16 +107,22 @@ static void interpretarLinha(char* s) {
     else         Serial.printf("[sim] nivel forcado = %ld dB\n", v);
     return;
   }
+#else
+  // Com o microfone de verdade não há nível forçado: avisa em vez de só ignorar.
+  if (strcmp(s, "auto") == 0 || lerInteiro(s, &v)) {
+    Serial.printf("[serial] '%s' ignorado: nivel forcado so existe com FONTE_SIMULADA 1\n", s);
+    return;
+  }
+#endif
   Serial.printf("[serial] '%s' ignorado\n", s);
 }
 
 void comandos_serial_iniciar() {
-  Serial.printf("[serial] comandos: um nivel (%d a %d dB) ou 'auto'",
-                SIM_FORCADO_MIN_DB, SIM_FORCADO_MAX_DB);
-#if TESTE_PREFS
-  Serial.print(" | 'limite N' | 'x N'");
+  Serial.print("[serial] comandos:");
+#if FONTE_SIMULADA
+  Serial.printf(" um nivel (%d a %d dB) ou 'auto' |", SIM_FORCADO_MIN_DB, SIM_FORCADO_MAX_DB);
 #endif
-  Serial.println(" | 'wifi' | 'wifi apagar' | 'web'");
+  Serial.println(" 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta'");
 }
 
 void comandos_serial_atualizar() {
@@ -131,6 +146,9 @@ void comandos_serial_atualizar() {
 }
 
 #else
-void comandos_serial_iniciar() {}
+// COMANDOS_SERIAL = 0: nada é lido do Serial.
+void comandos_serial_iniciar() {
+  Serial.println("[serial] comandos desligados (COMANDOS_SERIAL 0)");
+}
 void comandos_serial_atualizar() {}
 #endif
