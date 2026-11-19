@@ -14,3 +14,10 @@ bool audio_iniciar();
 // Na fonte real, espera dentro do i2s_read até as amostras chegarem
 // (cerca de JANELA_MS). Na simulada, devolve na hora.
 bool audio_ler_janela(int32_t* canalA, int32_t* canalB);
+
+// Só para a fonte simulada (FONTE_SIMULADA = 1): força o nível gerado, em dB,
+// ou volta ao automático com -1. Pode ser chamada do loop() enquanto a tarefa
+// lê o áudio. Devolve false (e não muda nada) se o valor estiver fora da faixa.
+constexpr int SIM_FORCADO_MIN_DB = 20;
+constexpr int SIM_FORCADO_MAX_DB = 120;
+bool audio_sim_forcar_nivel(int db);

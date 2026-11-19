@@ -9,8 +9,6 @@
 // FONTE SIMULADA
 // =====================================================================
 #include <math.h>
-#include <string.h>
-#include <stdlib.h>
 
 // Faixas da simulação (mesma ideia do script.ino antigo, agora em dB).
 static constexpr int      SIM_FUNDO_MIN_DB   = 35;
@@ -21,23 +19,19 @@ static constexpr uint32_t SIM_RAJADA_MIN_MS  = 1000;
 static constexpr uint32_t SIM_RAJADA_MAX_MS  = 4000;
 static constexpr uint32_t SIM_INTERVALO_MIN_MS = 5000;
 static constexpr uint32_t SIM_INTERVALO_MAX_MS = 15000;
-// Faixa aceita para o valor digitado no Serial.
-static constexpr long     SIM_FORCADO_MIN_DB = 20;
-static constexpr long     SIM_FORCADO_MAX_DB = 120;
-
 static float    nivelDb        = 40.0f;  // nível atual do canal A (dB)
 static float    diferencaB_Db  = 0.0f;   // diferença fixa do canal B, sorteada no início
-static long     nivelForcadoDb = -1;     // valor digitado no Serial (-1 = automático)
 static bool     emRajada       = false;
 static int      alvoRajadaDb   = 0;
 static uint32_t tFimRajada     = 0;
 static uint32_t tProxRajada    = 0;
 static uint32_t estadoSorteio  = 1;      // estado do gerador rápido de ruído
 
-// Linha digitada no Serial, montada aos poucos (sem esperar).
-static char    linha[16];
-static uint8_t tamLinha   = 0;
-static bool    linhaLonga = false;
+// Nível forçado (-1 = automático). O loop() escreve (comandos do Serial) e a
+// tarefa de áudio lê. "volatile" tem o mesmo papel do volatile do Java: cada
+// leitura busca o valor atual na memória. Um int32_t é lido e escrito de uma vez
+// só no ESP32, então não precisa de trava.
+static volatile int32_t nivelForcadoDb = -1;
 
 // "Já passou do instante t?" Funciona mesmo quando millis() dá a volta (~49 dias).
 static bool passou(uint32_t agora, uint32_t t) { return (int32_t)(agora - t) >= 0; }
@@ -58,56 +52,17 @@ static float rmsDeDb(float db) {
   return rmsRef * powf(10.0f, (db - MIC_REF_DB_SPL) / 20.0f);
 }
 
-// Interpreta a linha digitada: um número inteiro de 20 a 120, ou "auto" / "-1".
-// Qualquer outra coisa é ignorada (sem virar 0, como acontecia com parseInt).
-static void interpretarLinha(char* s) {
-  while (*s == ' ' || *s == '\t') s++;
-  char* fim = s + strlen(s);
-  while (fim > s && (fim[-1] == ' ' || fim[-1] == '\t')) *--fim = '\0';
-  if (*s == '\0') return;   // linha vazia
-
-  if (strcmp(s, "auto") == 0 || strcmp(s, "-1") == 0) {
-    nivelForcadoDb = -1;
-    Serial.println("[sim] nivel automatico");
-    return;
-  }
-
-  char* resto = nullptr;
-  long v = strtol(s, &resto, 10);
-  if (resto == s || *resto != '\0' || v < SIM_FORCADO_MIN_DB || v > SIM_FORCADO_MAX_DB) {
-    Serial.printf("[sim] '%s' ignorado: digite %ld a %ld, ou auto\n",
-                  s, SIM_FORCADO_MIN_DB, SIM_FORCADO_MAX_DB);
-    return;
-  }
-  nivelForcadoDb = v;
-  Serial.printf("[sim] nivel forcado = %ld dB\n", v);
-}
-
-// Lê só o que já chegou no Serial; nunca espera.
-static void processarSerial() {
-  while (Serial.available() > 0) {
-    const char c = (char)Serial.read();
-    if (c == '\n' || c == '\r') {
-      if (linhaLonga) {
-        Serial.println("[sim] linha longa demais, ignorada");
-      } else if (tamLinha > 0) {
-        linha[tamLinha] = '\0';
-        interpretarLinha(linha);
-      }
-      tamLinha   = 0;
-      linhaLonga = false;
-    } else if (tamLinha < sizeof(linha) - 1) {
-      linha[tamLinha++] = c;
-    } else {
-      linhaLonga = true;
-    }
-  }
+bool audio_sim_forcar_nivel(int db) {
+  if (db != -1 && (db < SIM_FORCADO_MIN_DB || db > SIM_FORCADO_MAX_DB)) return false;
+  nivelForcadoDb = db;
+  return true;
 }
 
 // Avança a simulação: fundo calmo com rajadas de barulho de tempos em tempos.
 static void atualizarNivel(uint32_t agora) {
-  if (nivelForcadoDb >= 0) {
-    nivelDb = (float)nivelForcadoDb;
+  const int32_t forcado = nivelForcadoDb;   // lê uma vez só
+  if (forcado >= 0) {
+    nivelDb = (float)forcado;
     return;
   }
 
@@ -151,14 +106,12 @@ bool audio_iniciar() {
   tProxRajada   = millis() + 3000;    // primeira rajada logo no começo
   Serial.printf("[audio] fonte SIMULADA, %d microfone(s)", NUM_MICROFONES);
   if (NUM_MICROFONES == 2) Serial.printf(", canal B %+.1f dB", diferencaB_Db);
-  Serial.printf("\n[audio] digite um nivel (%ld a %ld dB) ou 'auto' no Serial\n",
-                SIM_FORCADO_MIN_DB, SIM_FORCADO_MAX_DB);
+  Serial.println();
   return true;
 }
 
 bool audio_ler_janela(int32_t* canalA, int32_t* canalB) {
   if (canalA == nullptr) return false;
-  processarSerial();
   atualizarNivel(millis());
   gerarCanal(canalA, nivelDb);
 #if NUM_MICROFONES == 2
