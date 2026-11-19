@@ -76,6 +76,16 @@ constexpr int LIMITE_MAX_DB = 120;
 constexpr int TEMPO_X_MIN_S = 1;
 constexpr int TEMPO_X_MAX_S = 600;
 
+// Histerese: depois de passar do limite, o nível só conta como "abaixo"
+// quando cai a menos de (limite - HISTERESE_DB). Entre os dois, nada zera.
+constexpr float HISTERESE_DB = 3.0f;
+// Tempo que o nível precisa ficar abaixo de (limite - HISTERESE_DB)
+// para o alerta acabar.
+constexpr uint32_t HOLD_MS = 2000;
+
+// Autoteste da regra dos X segundos, roda uma vez no setup e imprime PASS/FAIL.
+#define TESTE_REGRA 1
+
 // ================== TEMPOS ==================
 constexpr uint32_t JANELA_MS    = 125;    // duração de cada janela de medição (Parte 5)
 constexpr uint32_t BATIMENTO_MS = 1000;   // intervalo da mensagem de "vivo" no Serial
@@ -92,7 +102,7 @@ constexpr size_t AMOSTRAS_POR_JANELA = FREQ_AMOSTRAGEM_HZ * JANELA_MS / 1000;
 #define DEBUG_AUDIO 1
 
 // ================== DEMONSTRAÇÃO DAS SAÍDAS ==================
-// Enquanto a medição não existe (Partes 4–7), alterna calmo -> contando -> alerta
-// para testar LEDs e buzzer. Desligar (0) quando a regra real entrar.
-#define MODO_DEMO_SAIDAS 1
+// 1 = alterna calmo -> contando -> alerta sozinho, para testar LEDs e buzzer.
+// 0 = LEDs e buzzer seguem a regra real dos X segundos (Parte 6).
+#define MODO_DEMO_SAIDAS 0
 constexpr uint32_t DEMO_PASSO_MS = 2000;

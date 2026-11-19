@@ -13,6 +13,7 @@ static uint32_t corDoEstado(Estado e) {
     case Estado::CALMO:    return fita.Color(0, 255, 0);     // verde
     case Estado::CONTANDO: return fita.Color(255, 180, 0);   // amarelo (menos verde para não puxar para o limão)
     case Estado::ALERTA:   return fita.Color(255, 0, 0);     // vermelho
+    case Estado::SEM_SINAL: return fita.Color(0, 0, 255);    // azul: erro, sem microfone
   }
   return 0;
 }
