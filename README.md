@@ -133,9 +133,9 @@ Nenhum áudio é gravado, armazenado ou enviado.
 | Firmware: controle do módulo WS2812 (biblioteca NeoPixel ou FastLED) | Pendente |
 | Firmware: buzzer e alerta local sem Wi-Fi | Pronto |
 | Firmware: receber e guardar a configuração | Pronto |
-| Firmware: Wi-Fi, AP de setup, mDNS e NTP | Em desenvolvimento |
-| Página de configuração servida pelo ESP32 | Pendente |
-| Aviso ao porteiro na página aberta | Pendente |
+| Firmware: Wi-Fi, AP de setup, mDNS e NTP | Pronto |
+| Página de configuração servida pelo ESP32 | Em desenvolvimento |
+| Aviso ao porteiro na página aberta | Em desenvolvimento |
 | Calibração com decibelímetro | Pendente |
 | Case impresso em 3D | Pendente |
 | Testes em campo | Pendente |

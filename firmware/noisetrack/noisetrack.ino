@@ -14,11 +14,13 @@
 #include "armazenamento.h"
 #include "comandos_serial.h"
 #include "rede.h"
+#include "web.h"
 #include "teste_nivel_db.h"
 #include "teste_regra.h"
 #include "teste_tarefa.h"
 #include "teste_prefs.h"
 #include "teste_wifi.h"
+#include "teste_web.h"
 
 // De quanto em quanto tempo o loop() olha o estado publicado pela tarefa.
 // 25 ms é bem menos que uma janela (125 ms), então nenhuma janela passa batida.
@@ -101,9 +103,13 @@ void setup() {
 #if TESTE_WIFI
   teste_wifi_rodar();       // só a lógica (tempo simulado); não usa o Wi-Fi
 #endif
+#if TESTE_WEB
+  teste_web_rodar();        // só a parte pura da página; não usa a rede
+#endif
 
   // Wi-Fi: só prepara. A conexão acontece aos poucos, em rede_atualizar().
   rede_iniciar();
+  web_iniciar();            // a página só liga quando o Wi-Fi do local conectar
 
   comandos_serial_iniciar();
   teste_tarefa_iniciar(millis());
@@ -121,5 +127,6 @@ void loop() {
   imprimirEstado(agora);
   comandos_serial_atualizar();   // pode gravar na flash: por isso fica aqui, e não na tarefa
   rede_atualizar(agora);         // Wi-Fi, portal, mDNS e NTP: nunca espera a rede
+  web_atualizar(agora);          // página, /status, /config e WebSocket
   teste_tarefa_verificar(agora);
 }

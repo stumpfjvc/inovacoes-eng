@@ -4,6 +4,7 @@
 #include "rede.h"
 #include "config.h"
 #include "armazenamento.h"
+#include "web.h"
 #include <WiFi.h>
 #include <WebServer.h>
 #include <DNSServer.h>
@@ -36,6 +37,8 @@ static char senha[WIFI_TAM_SENHA];
 static bool temCredencial  = false;
 static bool credencialNova = false;
 static char senhaAp[REDE_TAM_SENHA_AP + 1];
+static char senhaConfig[REDE_TAM_SENHA_AP + 1];
+static char idAparelho[24];
 
 static uint32_t tUltimoPasso    = 0;
 static uint32_t tUltimoNtp      = 0;
@@ -142,6 +145,7 @@ static void conectar() {
 }
 
 static void ligarAp() {
+  web_parar();              // libera a porta 80 para o portal (a página só roda conectada)
   WiFi.mode(WIFI_AP_STA);   // AP e cliente juntos: continua podendo tentar a rede salva
   WiFi.softAP(WIFI_AP_NOME, senhaAp);
   const IPAddress ip = WiFi.softAPIP();
@@ -199,12 +203,14 @@ void rede_iniciar() {
   uint8_t mac[6];
   esp_efuse_mac_get_default(mac);
   rede_gerar_senha_ap(mac, WIFI_AP_SEGREDO, senhaAp);
+  rede_gerar_senha(mac, REDE_PREFIXO_SENHA_CONFIG, WIFI_AP_SEGREDO, senhaConfig);
+  snprintf(idAparelho, sizeof(idAparelho), "noisetrack-%02x%02x%02x", mac[3], mac[4], mac[5]);
 
-  char etiqueta[64];
+  char etiqueta[96];
   rede_texto_etiqueta(etiqueta, sizeof(etiqueta));
   Serial.printf("[rede] %s\n", etiqueta);
 #ifdef WIFI_AP_SEGREDO_PADRAO
-  Serial.println("[rede] AVISO: sem secrets.h, a senha do AP usa o segredo padrao e e previsivel");
+  Serial.println("[rede] AVISO: sem secrets.h, as senhas (AP e config) usam o segredo padrao e sao previsiveis");
 #endif
 #if USANDO_WOKWI
   Serial.println("[rede] Wokwi: sem portal, conectando direto a 'Wokwi-GUEST'");
@@ -276,5 +282,8 @@ void rede_imprimir_status() {
 }
 
 void rede_texto_etiqueta(char* saida, size_t tam) {
-  snprintf(saida, tam, "Rede: %s | Senha: %s", WIFI_AP_NOME, senhaAp);
+  snprintf(saida, tam, "Rede: %s | Senha: %s | Config: %s", WIFI_AP_NOME, senhaAp, senhaConfig);
 }
+
+const char* rede_senha_config() { return senhaConfig; }
+const char* rede_id() { return idAparelho; }

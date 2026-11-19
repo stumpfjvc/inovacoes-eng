@@ -140,3 +140,16 @@ constexpr const char* NTP_SERVIDOR_2 = "a.st1.ntp.br";
 
 // Autoteste da lógica de rede (máquina de estados, validação, senha do AP).
 #define TESTE_WIFI 1
+
+// ================== PÁGINA (Parte 10) ==================
+// Só ligam com o Wi-Fi do local CONECTADO (o portal do AP usa a porta 80 no setup).
+constexpr uint16_t WEB_PORTA_HTTP = 80;   // página, /status e /config
+constexpr uint16_t WEB_PORTA_WS   = 81;   // WebSocket (medidor ao vivo)
+constexpr uint8_t  WEB_MAX_CLIENTES_WS = 3;
+
+// Senha de configuração: WEB_TENTATIVAS_MAX erradas seguidas bloqueiam por WEB_BLOQUEIO_MS.
+constexpr int      WEB_TENTATIVAS_MAX = 5;
+constexpr uint32_t WEB_BLOQUEIO_MS    = 60000;
+
+// Autoteste da parte pura da página (JSON, validação, bloqueio, WebSocket).
+#define TESTE_WEB 1

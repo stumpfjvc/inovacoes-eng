@@ -145,13 +145,19 @@ bool rede_senha_valida(const char* senha) {
 const char REDE_ALFABETO_SENHA[] = "23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz";
 
 void rede_gerar_senha_ap(const uint8_t mac[6], const char* segredo, char* saida) {
-  // SHA-256 embaralha (MAC + segredo) num resumo de 32 bytes. Quem só conhece o
-  // MAC (que o próprio AP anuncia) não consegue refazer a conta sem o segredo.
+  rede_gerar_senha(mac, "", segredo, saida);
+}
+
+void rede_gerar_senha(const uint8_t mac[6], const char* prefixo, const char* segredo, char* saida) {
+  // SHA-256 embaralha (MAC + prefixo + segredo) num resumo de 32 bytes. Quem só
+  // conhece o MAC (que o próprio AP anuncia) não consegue refazer a conta sem o
+  // segredo. Prefixos diferentes dão senhas sem relação visível entre si.
   uint8_t resumo[32];
   mbedtls_sha256_context ctx;
   mbedtls_sha256_init(&ctx);
   mbedtls_sha256_starts_ret(&ctx, 0);   // 0 = SHA-256 (1 seria SHA-224)
   mbedtls_sha256_update_ret(&ctx, mac, 6);
+  mbedtls_sha256_update_ret(&ctx, (const unsigned char*)prefixo, strlen(prefixo));
   mbedtls_sha256_update_ret(&ctx, (const unsigned char*)segredo, strlen(segredo));
   mbedtls_sha256_finish_ret(&ctx, resumo);
   mbedtls_sha256_free(&ctx);
