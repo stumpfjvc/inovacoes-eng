@@ -4,6 +4,7 @@
 
 #if TESTE_NIVEL_DB
 #include "nivel_db.h"
+#include "calibracao.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -96,6 +97,27 @@ bool teste_nivel_db_rodar() {
   const NivelDb umMorto = nivel_calcular(a, b, n);
   conferir("6 B parado: combinado = A", umMorto.dbCombinado, umMorto.dbA);
   conferirBool("6 B parado marcado como descartado", umMorto.canalDescartado, true);
+
+  // 7) Média da calibração (Parte 11): 80 e 70 dB dão 77,4 em energia (não 75).
+  AcumuladorCalib calib;
+  float media = 0.0f;
+  calib_zerar(&calib);
+  calib_somar(&calib, 80.0f, true);
+  calib_somar(&calib, 70.0f, true);
+  conferirBool("7 calib com janelas validas tem media", calib_media(calib, &media), true);
+  conferir("7 calib media de 80 e 70", media, ESPERADO_MEDIA_80_70);
+
+  // 8) Janela inválida fica fora: nem a média nem o mínimo/máximo mudam.
+  calib_somar(&calib, 130.0f, false);
+  calib_media(calib, &media);
+  conferir("8 calib ignora janela invalida", media, ESPERADO_MEDIA_80_70);
+  conferir("8 calib minimo", calib.minDb, 70.0f);
+  conferir("8 calib maximo", calib.maxDb, 80.0f);
+
+  // 9) Período só com janelas inválidas: "sem sinal".
+  calib_zerar(&calib);
+  calib_somar(&calib, 50.0f, false);
+  conferirBool("9 calib sem janela valida tem media", calib_media(calib, &media), false);
 
   free(a);
   free(b);

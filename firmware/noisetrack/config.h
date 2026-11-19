@@ -163,6 +163,15 @@ constexpr float OFFSET_CAL_MAX_DB = 20.0f;
 #define COMANDOS_SERIAL 1
 #endif
 
+// ================== CALIBRAÇÃO NA BANCADA (Parte 11) ==================
+// 1 = em vez de uma linha [nivel] por janela, o loop() imprime a cada
+// CALIB_PERIODO_MS a média em energia de A, B e combinado, com mínimo e máximo
+// (linha "[calib]"). 0 = normal. Só muda o que é impresso, não a medição.
+#ifndef CALIBRACAO
+#define CALIBRACAO 0
+#endif
+constexpr uint32_t CALIB_PERIODO_MS = 5000;
+
 // ================== REDE (Parte 9) ==================
 // Tempo máximo da primeira tentativa de conexão antes de ligar o AP de setup.
 constexpr uint32_t WIFI_TIMEOUT_MS = 15000;

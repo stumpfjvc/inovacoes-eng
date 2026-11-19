@@ -45,6 +45,11 @@
 // (e "80"/"auto" se FONTE_SIMULADA 1). 0 = o Serial não lê nada.
 #define COMANDOS_SERIAL 1
 
+// ---------- Calibração ----------
+// Seção 5 do guia: troque para 1 (com FONTE_SIMULADA 0). Em vez de 8 linhas
+// [nivel] por segundo, sai uma linha [calib] a cada 5 s com a média de A, B e comb.
+#define CALIBRACAO 0
+
 // ---------- Autotestes (rodam uma vez na partida) ----------
 // Na bancada, deixe todos em 1. Antes de instalar: TESTE_PREFS 0 (ele grava
 // na flash a cada partida); os outros podem ir a 0 para a partida ser mais rápida.
