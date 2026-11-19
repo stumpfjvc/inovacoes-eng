@@ -138,7 +138,7 @@ Nenhum áudio é gravado, armazenado ou enviado.
 | Case impresso em 3D | Pendente |
 | Testes em campo | Pendente |
 
-`script.ino`, `diagram.json` e `index.html` são uma **simulação** (ruído aleatório, painel de condomínio de demonstração) e não fazem parte do projeto final.
+A pasta `simulacao-antiga/` (`script.ino`, `diagram.json` e `index.html`) guarda uma **simulação antiga** (ruído aleatório, painel de condomínio de demonstração) e não faz parte do projeto final. O firmware de verdade fica em `firmware/noisetrack/`.
 
 ## Como usar
 
