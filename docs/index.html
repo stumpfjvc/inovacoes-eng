@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>NoiseTrack</title>
+<meta name="description" content="Acompanhe o nível de ruído dos seus aparelhos NoiseTrack.">
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">
+    <svg class="marca-icone" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 11v2" />
+    </svg>
+    <span>NoiseTrack</span>
+  </div>
+  <div class="sessao" id="sessao" hidden>
+    <span class="sessao-email" id="sessaoEmail"></span>
+    <button type="button" class="botao botao-discreto" id="botaoSair">Sair</button>
+  </div>
+</header>
+
+<main class="conteudo">
+
+  <!-- Aparece só se o config.js ainda estiver com os textos COLE_AQUI -->
+  <section class="aviso" id="avisoConfig" hidden>
+    <h1>Falta configurar o site</h1>
+    <p id="avisoConfigTexto">O arquivo <code>config.js</code> ainda está com os textos de exemplo.</p>
+    <ol>
+      <li>No painel do Supabase, abra <strong>Project Settings → API</strong>.</li>
+      <li>Copie a <strong>Project URL</strong> e a chave <strong>anon public</strong>.</li>
+      <li>No arquivo <code>docs/config.js</code>, troque <code>COLE_AQUI_A_URL_DO_PROJETO</code>
+        e <code>COLE_AQUI_A_CHAVE_ANON</code> por esses dois valores.</li>
+      <li>Salve e recarregue esta página.</li>
+    </ol>
+    <p class="nota">Nunca use a chave <code>service_role</code> aqui.</p>
+  </section>
+
+  <!-- Entrar / criar conta -->
+  <section class="entrada" id="telaEntrada" hidden>
+    <h1>Entrar</h1>
+    <p class="subtitulo">Veja o ruído dos seus aparelhos e ajuste o alerta de qualquer lugar.</p>
+    <form id="formEntrada" class="formulario" novalidate>
+      <label for="campoEmail">E-mail</label>
+      <input id="campoEmail" type="email" autocomplete="email" required>
+      <label for="campoSenha">Senha</label>
+      <input id="campoSenha" type="password" autocomplete="current-password" minlength="6" required>
+      <div class="acoes">
+        <button type="submit" class="botao" id="botaoEntrar">Entrar</button>
+        <button type="button" class="botao botao-secundario" id="botaoCadastrar">Criar conta</button>
+      </div>
+      <p class="mensagem" id="mensagemEntrada" role="status" aria-live="polite"></p>
+    </form>
+    <p class="nota">Ao criar a conta, pode ser preciso confirmar o e-mail antes de entrar.
+      Confira a caixa de entrada e o spam.</p>
+  </section>
+
+  <!-- Painel com os aparelhos -->
+  <section class="painel" id="telaPainel" hidden>
+    <form id="formParear" class="parear" novalidate>
+      <label for="campoCodigo">Código do aparelho</label>
+      <div class="parear-linha">
+        <input id="campoCodigo" type="text" inputmode="text" autocomplete="off" autocapitalize="characters"
+               spellcheck="false" maxlength="16" placeholder="XXXX-XXXX" required>
+        <button type="submit" class="botao">Parear</button>
+      </div>
+      <p class="nota">Está na etiqueta do aparelho.</p>
+      <p class="mensagem" id="mensagemParear" role="status" aria-live="polite"></p>
+    </form>
+
+    <p class="vazio" id="listaVazia" hidden>Nenhum aparelho pareado ainda. Digite o código da etiqueta acima.</p>
+    <div class="lista" id="listaAparelhos"></div>
+  </section>
+
+</main>
+
+<!-- Modelo de um cartão. O app.js copia e preenche (sempre com textContent). -->
+<template id="modeloCartao">
+  <article class="cartao" data-estado="">
+    <header class="cartao-topo">
+      <h2 class="cartao-nome"></h2>
+      <span class="selo" data-online="false"><span class="selo-ponto" aria-hidden="true"></span><span class="selo-texto">Offline</span></span>
+    </header>
+
+    <div class="leitura">
+      <p class="nivel"><span class="nivel-numero">--</span><span class="nivel-unidade">dB</span></p>
+      <p class="estado"><span class="estado-marca" aria-hidden="true"></span><span class="estado-texto">Sem dados</span></p>
+    </div>
+    <p class="visto"></p>
+
+    <div class="medidor" role="meter" aria-valuemin="20" aria-valuemax="110" aria-valuenow="20" aria-label="Nível de ruído">
+      <div class="medidor-trilho">
+        <div class="medidor-barra"></div>
+        <div class="medidor-limite"><span class="medidor-limite-texto"></span></div>
+      </div>
+      <div class="medidor-escala" aria-hidden="true">
+        <span>20</span><span>50</span><span>80</span><span>110</span>
+      </div>
+    </div>
+
+    <figure class="grafico">
+      <figcaption>Últimos 30 minutos</figcaption>
+      <svg class="grafico-svg" viewBox="0 0 320 120" preserveAspectRatio="none" role="img" aria-label="Gráfico do nível nos últimos 30 minutos"></svg>
+      <p class="grafico-vazio" hidden>Sem leituras nos últimos 30 minutos.</p>
+    </figure>
+
+    <form class="config" novalidate>
+      <fieldset>
+        <legend>Alerta</legend>
+        <div class="config-campos">
+          <div>
+            <label class="rotulo-limite">Limite (dB)</label>
+            <input class="campo-limite" type="number" min="30" max="100" step="1" inputmode="numeric" required>
+          </div>
+          <div>
+            <label class="rotulo-segundos">Segundos acima</label>
+            <input class="campo-segundos" type="number" min="1" max="60" step="1" inputmode="numeric" required>
+          </div>
+        </div>
+        <p class="nota">Dispara quando o som fica acima do limite pelos segundos escolhidos.
+          A placa pega a nova configuração em alguns segundos.</p>
+        <div class="acoes">
+          <button type="submit" class="botao">Salvar</button>
+          <button type="button" class="botao botao-perigo botao-desparear">Desparear</button>
+        </div>
+        <p class="mensagem mensagem-config" role="status" aria-live="polite"></p>
+      </fieldset>
+    </form>
+  </article>
+</template>
+
+<!-- supabase-js v2 (versão fixa) e, depois, a configuração e o app -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
