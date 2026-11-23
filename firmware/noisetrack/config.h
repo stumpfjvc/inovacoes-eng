@@ -137,10 +137,12 @@ static_assert(BUZZER_PULSO_MS > 0 && BUZZER_PAUSA_MS > 0, "pulso e pausa do buzz
 constexpr int LIMITE_PADRAO_DB = 65;   // limite em dB
 constexpr int TEMPO_X_PADRAO_S = 5;    // segundos contínuos acima do limite
 
+// Faixas aceitas (página, Serial, memória e regra usam as mesmas).
+// Valor guardado fora da faixa é trocado pelo padrão ao ligar.
 constexpr int LIMITE_MIN_DB = 30;
-constexpr int LIMITE_MAX_DB = 120;
+constexpr int LIMITE_MAX_DB = 100;
 constexpr int TEMPO_X_MIN_S = 1;
-constexpr int TEMPO_X_MAX_S = 600;
+constexpr int TEMPO_X_MAX_S = 60;
 
 // Histerese: depois de passar do limite, o nível só conta como "abaixo"
 // quando cai a menos de (limite - HISTERESE_DB). Entre os dois, nada zera.

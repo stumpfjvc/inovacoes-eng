@@ -84,9 +84,9 @@ ul{margin:0;padding-left:1.1rem;font-size:.9rem}
   <form id="formulario">
     <div class="linha">
       <div><label for="campoLimite">Limite (dB)</label>
-        <input id="campoLimite" type="number" min="30" max="120" step="1" required></div>
+        <input id="campoLimite" type="number" min="30" max="100" step="1" required></div>
       <div><label for="campoX">Tempo X (s)</label>
-        <input id="campoX" type="number" min="1" max="600" step="1" required></div>
+        <input id="campoX" type="number" min="1" max="60" step="1" required></div>
     </div>
     <label for="campoSenha">Senha de configuração</label>
     <input id="campoSenha" type="password" autocomplete="current-password" required>
@@ -259,7 +259,8 @@ el('formulario').onsubmit = function (ev) {
       } else if (j.erro === 'bloqueado') {
         mensagem('Muitas tentativas erradas. Tente de novo em ' + j.espera_s + ' s.');
       } else {
-        mensagem('Valores fora da faixa: limite de 30 a 120 dB e X de 1 a 600 s.');
+        // A mensagem vem pronta do aparelho, que é quem valida.
+        mensagem(j.mensagem || 'Valores inválidos: limite de 30 a 100 dB e X de 1 a 60 s.');
       }
     })
     .catch(function () { mensagem('Sem resposta do aparelho.'); });

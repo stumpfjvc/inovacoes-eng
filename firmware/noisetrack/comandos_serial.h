@@ -1,7 +1,7 @@
 // NoiseTrack: comandos digitados no Serial (115200, uma linha por comando).
 // Ligados por COMANDOS_SERIAL (config.h). Funcionam na placa real e no Wokwi:
-//   limite 70   -> muda e grava o limite (30 a 120 dB)
-//   x 8         -> muda e grava o tempo X (1 a 600 s)
+//   limite 70   -> muda e grava o limite (30 a 100 dB)
+//   x 8         -> muda e grava o tempo X (1 a 60 s)
 //   wifi        -> mostra o estado da rede, o IP e o horário
 //   wifi apagar -> apaga a rede salva (liga o AP de setup)
 //   web         -> mostra o endereço da página, os clientes e a senha de configuração

@@ -175,6 +175,44 @@ bool teste_regra_rodar() {
     resultado("extra) limite e X invalidos usam o padrao", calmo && sim.disparou, d);
   }
 
+  // h) Valores vindos da página, nos extremos: limite 100 dB e X = 60 s valem.
+  {
+    Simulacao sim;
+    rodar(sim, 6000, 95.0f, true, 100.0f, 60);    // 95 dB fica abaixo do limite 100
+    const bool calmo95 = sim.regra.estado() == Estado::CALMO;
+    const uint32_t inicio = sim.agora;
+    rodar(sim, 59000, 105.0f, true, 100.0f, 60);  // 59 s acima: ainda não (X = 60, não 5)
+    const bool naoDisparou59 = !sim.disparou;
+    rodar(sim, 2000, 105.0f, true, 100.0f, 60);
+    const uint32_t atraso = (uint32_t)(sim.tDisparou - inicio);
+    snprintf(d, sizeof(d), "calmo com 95=%s, nao aos 59 s=%s, disparou apos %lu ms",
+             calmo95 ? "sim" : "nao", naoDisparou59 ? "sim" : "nao", (unsigned long)atraso);
+    resultado("h) limite 100 dB e X 60 s respeitados", calmo95 && naoDisparou59 && sim.disparou &&
+              perto(atraso, 60000, JANELA_MS), d);
+  }
+
+  // i) Logo acima do máximo (101 dB e 61 s) é inválido: usa 65 dB e 5 s.
+  {
+    Simulacao sim;
+    rodar(sim, 6000, ALTO, true, 101.0f, 61);     // 70 dB passa do padrão 65; X vale 5
+    const uint32_t atraso = sim.tDisparou;
+    snprintf(d, sizeof(d), "disparou=%s apos %lu ms", sim.disparou ? "sim" : "nao",
+             (unsigned long)atraso);
+    resultado("i) limite 101 e X 61 usam o padrao", sim.disparou &&
+              perto(atraso, X_S * 1000, JANELA_MS), d);
+  }
+
+  // j) Mudança de configuração no meio da contagem vale na hora (sem reiniciar).
+  {
+    Simulacao sim;
+    rodar(sim, 2000, ALTO, true, 65.0f, 30);      // contando com X = 30 s
+    const bool contando = sim.regra.estado() == Estado::CONTANDO && !sim.disparou;
+    rodar(sim, 1000, ALTO, true, 65.0f, 2);       // a página muda X para 2 s: já passou
+    snprintf(d, sizeof(d), "contando com X=30=%s, disparou com X=2=%s",
+             contando ? "sim" : "nao", sim.disparou ? "sim" : "nao");
+    resultado("j) X novo vale na proxima janela", contando && sim.disparou, d);
+  }
+
   Serial.printf("[teste-regra] === %s (%d falha(s)) ===\n",
                 falhas == 0 ? "TUDO PASS" : "HOUVE FAIL", falhas);
   return falhas == 0;

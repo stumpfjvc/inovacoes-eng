@@ -30,7 +30,7 @@ class Regra {
  public:
   // nivelDb e valido: o dbCombinado e o validoCombinado da Parte 5.
   // agora: instante da janela em ms. limiteDb e tempoXs fora da faixa do
-  // config.h (30–120 dB, 1–600 s) são trocados pelos padrões (65 dB, 5 s).
+  // config.h (30–100 dB, 1–60 s) são trocados pelos padrões (65 dB, 5 s).
   RegraSaida atualizar(float nivelDb, bool valido, uint32_t agora,
                        float limiteDb, int tempoXs);
 
