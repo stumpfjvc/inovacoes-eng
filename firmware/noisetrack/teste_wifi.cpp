@@ -193,6 +193,35 @@ bool teste_wifi_rodar() {
   conferir("c) outro MAC: outra senha", strcmp(s1, s2) != 0);
   conferir("c) outro segredo: outra senha", strcmp(s1, s3) != 0);
 
+  // ---------- (d) QR de Wi-Fi da etiqueta ----------
+  {
+    char qr[REDE_TAM_QR];
+    const bool normal = rede_texto_qr_wifi("NoiseTrack-Setup", "Ab3dEf7h", qr, sizeof(qr)) &&
+                        strcmp(qr, "WIFI:T:WPA;S:NoiseTrack-Setup;P:Ab3dEf7h;;") == 0;
+    const bool aberta = rede_texto_qr_wifi("Casa", "", qr, sizeof(qr)) &&
+                        strcmp(qr, "WIFI:T:nopass;S:Casa;;") == 0;
+    conferir("d) QR de Wi-Fi no formato WIFI:T:WPA;S:...;P:...;;", normal && aberta);
+
+    char esc[32];
+    const bool cada = rede_escapar_qr("a\\b;c,d:e\"f", esc, sizeof(esc)) &&
+                      strcmp(esc, "a\\\\b\\;c\\,d\\:e\\\"f") == 0;
+    const bool qrEsc = rede_texto_qr_wifi("Rede;1", "pa:ss,wo\"rd", qr, sizeof(qr)) &&
+                       strcmp(qr, "WIFI:T:WPA;S:Rede\\;1;P:pa\\:ss\\,wo\\\"rd;;") == 0;
+    conferir("d) QR escapa \\ ; , : e \"", cada && qrEsc);
+
+    // Pior caso cabe; buffer pequeno recusa sem estourar e deixa a saída vazia.
+    char nome32[33], senha63[64];
+    memset(nome32, ';', 32);  nome32[32] = '\0';
+    memset(senha63, ':', 63); senha63[63] = '\0';
+    const bool piorCaso = rede_texto_qr_wifi(nome32, senha63, qr, sizeof(qr)) &&
+                          strlen(qr) == 13 + 64 + 3 + 126 + 2;
+    char pequeno[6];
+    const bool recusa = !rede_escapar_qr(";;;", pequeno, sizeof(pequeno)) && pequeno[0] == '\0' &&
+                        !rede_texto_qr_wifi("Casa", "12345678", pequeno, sizeof(pequeno)) &&
+                        pequeno[0] == '\0' && !rede_escapar_qr(nullptr, esc, sizeof(esc));
+    conferir("d) QR: pior caso cabe, buffer pequeno recusa", piorCaso && recusa);
+  }
+
   Serial.printf("[teste-wifi] === %s (%d falha(s)) ===\n",
                 falhas == 0 ? "TUDO PASS" : "HOUVE FAIL", falhas);
   return falhas == 0;

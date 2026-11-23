@@ -71,3 +71,17 @@ void rede_gerar_senha_ap(const uint8_t mac[6], const char* segredo, char* saida)
 
 // Prefixo da senha de configuração da página (Parte 10): outro prefixo, outra senha.
 constexpr const char* REDE_PREFIXO_SENHA_CONFIG = "config:";
+
+// ---------- QR de Wi-Fi (etiqueta) ----------
+// Formato lido pelas câmeras de celular: WIFI:T:WPA;S:<nome>;P:<senha>;;
+// Pior caso: nome de 32 e senha de 63 caracteres, todos escapados (2 cada),
+// mais o texto fixo. 224 cabe com folga.
+constexpr size_t REDE_TAM_QR = 224;
+
+// Copia "s" para "saida" pondo uma \ antes de \ ; , : e " (regra do formato).
+// Devolve false (e "saida" vazia) se não couber ou se s for nulo.
+bool rede_escapar_qr(const char* s, char* saida, size_t tam);
+
+// Monta o texto do QR. Senha vazia vira rede aberta: WIFI:T:nopass;S:<nome>;;
+// Devolve false (e "saida" vazia) se não couber.
+bool rede_texto_qr_wifi(const char* ssid, const char* senha, char* saida, size_t tam);

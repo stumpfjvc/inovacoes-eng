@@ -25,6 +25,10 @@ void rede_imprimir_status();
 // Texto da etiqueta: "Rede: NoiseTrack-Setup | Senha: XXXXXXXX | Config: YYYYYYYY".
 void rede_texto_etiqueta(char* saida, size_t tam);
 
+// Comando "etiqueta": a linha acima, mais o texto do QR de Wi-Fi do AP de setup,
+// o endereço do portal, o da página e o ID do aparelho.
+void rede_imprimir_etiqueta();
+
 // Senha de configuração da página (Parte 10): gerada do MAC com o segredo, como
 // a do AP, mas com outro prefixo. Só ela libera o POST /config.
 const char* rede_senha_config();

@@ -89,6 +89,8 @@ static void enviarPagina(int codigo, const String& corpo) {
 
 static void paginaInicio() {
   String corpo =
+      "<p><strong>&#9888; O aparelho s&oacute; funciona em Wi-Fi de 2,4 GHz.</strong><br>"
+      "Redes de 5 GHz (muitas t&ecirc;m &quot;5G&quot; no nome) n&atilde;o funcionam.</p>"
       "<p>Escolha o Wi-Fi do local.</p>"
       "<form method=\"post\" action=\"/salvar\">"
       "<label>Nome da rede<input name=\"ssid\" maxlength=\"32\" required></label>"
@@ -100,7 +102,9 @@ static void paginaInicio() {
     corpo += " | rede salva: ";
     corpo += escaparHtml(ssid);
   }
-  corpo += "</small></p>";
+  corpo += "</small></p><p><small>Endere&ccedil;o deste portal: <b>http://";
+  corpo += WiFi.softAPIP().toString();
+  corpo += "/</b></small></p>";
   enviarPagina(200, corpo);
 }
 
@@ -120,10 +124,20 @@ static void salvarPortal() {
   rede_credenciais_mudaram();
   Serial.printf("[rede] portal salvou a rede '%s' (%s)\n", ssid,
                 r.gravou ? "gravada" : "igual a salva");   // a senha nunca é impressa
-  enviarPagina(200, "<p>Salvo. Conectando a <b>" + escaparHtml(ssid) + "</b>.</p>"
-                    "<p>Quando conectar, a rede " + String(WIFI_AP_NOME) + " some e o aparelho "
-                    "fica em <b>http://" + String(MDNS_NOME) + ".local</b>. Se n&atilde;o "
-                    "conectar, ela volta e d&aacute; para tentar de novo.</p>");
+  const String nomeRede = escaparHtml(ssid);
+  const String portal   = "http://" + WiFi.softAPIP().toString() + "/";
+  enviarPagina(200,
+      "<p>Salvo. Conectando a <b>" + nomeRede + "</b>.</p>"
+      "<p>Quando conectar, a rede " + String(WIFI_AP_NOME) + " some. "
+      "Para abrir a p&aacute;gina do aparelho depois:</p><ol>"
+      "<li>Volte o celular para o Wi-Fi <b>" + nomeRede + "</b>.</li>"
+      "<li>Abra <b>http://" + String(MDNS_NOME) + ".local/</b></li>"
+      "<li>Se n&atilde;o abrir (comum no Android), procure o aparelho <b>" + String(MDNS_NOME) +
+      "</b> na lista de dispositivos do app ou da p&aacute;gina do roteador, anote o IP "
+      "e abra <b>http://IP/</b> (por exemplo http://192.168.0.23/).</li></ol>"
+      "<p>Se n&atilde;o conectar, a rede " + String(WIFI_AP_NOME) + " continua no ar "
+      "(o celular pode cair por alguns segundos e voltar). Conecte-se a ela, abra <b>" + portal +
+      "</b> e confira o nome da rede, a senha e se ela &eacute; de 2,4 GHz.</p>");
 }
 
 // Qualquer outro endereço vai para a página inicial. É isso que faz o Android e
@@ -283,6 +297,22 @@ void rede_imprimir_status() {
 
 void rede_texto_etiqueta(char* saida, size_t tam) {
   snprintf(saida, tam, "Rede: %s | Senha: %s | Config: %s", WIFI_AP_NOME, senhaAp, senhaConfig);
+}
+
+void rede_imprimir_etiqueta() {
+  char etiqueta[96];
+  rede_texto_etiqueta(etiqueta, sizeof(etiqueta));
+  Serial.printf("[rede] %s\n", etiqueta);
+
+  char qr[REDE_TAM_QR];
+  if (rede_texto_qr_wifi(WIFI_AP_NOME, senhaAp, qr, sizeof(qr))) {
+    Serial.printf("[etiqueta] QR Wi-Fi: %s\n", qr);
+  } else {
+    Serial.println("[etiqueta] QR Wi-Fi: (nao coube)");
+  }
+  Serial.println("[etiqueta] Portal: http://192.168.4.1/");   // IP padrão do AP do ESP32
+  Serial.printf("[etiqueta] Pagina: http://%s.local/ (ou o IP que o roteador der)\n", MDNS_NOME);
+  Serial.printf("[etiqueta] ID: %s\n", idAparelho[0] != '\0' ? idAparelho : "(ainda nao definido)");
 }
 
 const char* rede_senha_config() { return senhaConfig; }
