@@ -1,6 +1,7 @@
 // NoiseTrack: lógica pura da rede. Sem WiFi, sem Serial, sem millis().
 #include "rede_logica.h"
 #include "config.h"
+#include <stdio.h>
 #include <string.h>
 #include "mbedtls/sha256.h"
 
@@ -136,6 +137,42 @@ bool rede_senha_valida(const char* senha) {
   for (size_t i = 0; i < n; i++) {
     const unsigned char c = (unsigned char)senha[i];
     if (c < 32 || c > 126) return false;    // só ASCII visível e espaço
+  }
+  return true;
+}
+
+// ---------- QR de Wi-Fi ----------
+bool rede_escapar_qr(const char* s, char* saida, size_t tam) {
+  if (tam == 0) return false;
+  saida[0] = '\0';
+  if (s == nullptr) return false;
+  size_t n = 0;
+  for (; *s; s++) {
+    const bool especial = *s == '\\' || *s == ';' || *s == ',' || *s == ':' || *s == '"';
+    const size_t precisa = especial ? 2 : 1;
+    if (n + precisa >= tam) {   // >= : sobra sempre lugar para o fim do texto
+      saida[0] = '\0';
+      return false;
+    }
+    if (especial) saida[n++] = '\\';
+    saida[n++] = *s;
+  }
+  saida[n] = '\0';
+  return true;
+}
+
+bool rede_texto_qr_wifi(const char* ssid, const char* senha, char* saida, size_t tam) {
+  if (tam == 0) return false;
+  saida[0] = '\0';
+  char nomeEsc[2 * 32 + 1], senhaEsc[2 * 63 + 1];
+  if (!rede_escapar_qr(ssid, nomeEsc, sizeof(nomeEsc))) return false;
+  if (!rede_escapar_qr(senha, senhaEsc, sizeof(senhaEsc))) return false;
+  const int n = (senhaEsc[0] == '\0')
+      ? snprintf(saida, tam, "WIFI:T:nopass;S:%s;;", nomeEsc)
+      : snprintf(saida, tam, "WIFI:T:WPA;S:%s;P:%s;;", nomeEsc, senhaEsc);
+  if (n <= 0 || (size_t)n >= tam) {
+    saida[0] = '\0';
+    return false;
   }
   return true;
 }

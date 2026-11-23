@@ -49,11 +49,9 @@ static void interpretarLinha(char* s) {
     return;
   }
 
-  // Etiqueta do aparelho: senha do AP de setup e senha Config da página.
+  // Etiqueta do aparelho: senhas, QR de Wi-Fi, endereços e ID.
   if (strcmp(s, "etiqueta") == 0) {
-    char etiqueta[96];
-    rede_texto_etiqueta(etiqueta, sizeof(etiqueta));
-    Serial.printf("[rede] %s\n", etiqueta);
+    rede_imprimir_etiqueta();
     return;
   }
 

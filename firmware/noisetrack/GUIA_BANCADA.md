@@ -124,7 +124,7 @@ Com `COMANDOS_SERIAL 1` (padrão), digite no monitor e aperte Enter:
 
 | Comando | O que faz | Onde existe |
 |---|---|---|
-| `etiqueta` | Mostra a etiqueta: senha do AP de setup e senha Config | Placa real e simulação |
+| `etiqueta` | Mostra a etiqueta: senha do AP de setup, senha Config, texto do QR de Wi-Fi, endereços do portal e da página, e o ID | Placa real e simulação |
 | `wifi` | Estado da rede, IP e horário | Placa real e simulação |
 | `wifi apagar` | Apaga a rede salva (o AP de setup liga) | Placa real e simulação |
 | `web` | Endereço da página, clientes e senha de configuração | Placa real e simulação |
@@ -149,6 +149,10 @@ Respostas típicas:
 
 ```
 [rede] Rede: NoiseTrack-Setup | Senha: XXXXXXXX | Config: YYYYYYYY      <- etiqueta
+[etiqueta] QR Wi-Fi: WIFI:T:WPA;S:NoiseTrack-Setup;P:XXXXXXXX;;          <- (cole num gerador de QR)
+[etiqueta] Portal: http://192.168.4.1/
+[etiqueta] Pagina: http://noisetrack.local/ (ou o IP que o roteador der)
+[etiqueta] ID: noisetrack-a1b2c3
 [prefs] limite = 70 aceito, gravado                                       <- limite 70
 [prefs] limite 200 recusado (fora da faixa)                               <- limite 200
 [prefs] 'limite abc' ignorado: use 'limite 30' a 'limite 100'             <- texto inválido nunca vira 0
