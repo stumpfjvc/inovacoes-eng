@@ -19,8 +19,23 @@ size_t web_montar_json(const EstadoCompartilhado& e, const char* id, char* saida
 // ---------- Formulário de configuração ----------
 // Converte o texto inteiro em número; texto inválido devolve false (não vira 0).
 bool web_ler_inteiro(const char* s, long* v);
-// Lê e valida limite (30 a 120 dB) e X (1 a 600 s) vindos do formulário.
-bool web_ler_config(const char* limiteTxt, const char* xTxt, int* limite, int* tempoXs);
+// Motivo de um formulário recusado. Parecido com um enum do Java.
+enum class ErroConfig : uint8_t {
+  NENHUM,              // tudo certo
+  LIMITE_NAO_NUMERO,   // limite vazio, com letras ou com casas decimais
+  LIMITE_FAIXA,        // limite fora de LIMITE_MIN_DB..LIMITE_MAX_DB
+  X_NAO_NUMERO,
+  X_FAIXA              // X fora de TEMPO_X_MIN_S..TEMPO_X_MAX_S
+};
+// Lê e valida limite (30 a 100 dB) e X (1 a 60 s), inteiros, vindos do
+// formulário. Só escreve em *limite e *tempoXs se os dois estiverem certos.
+ErroConfig web_validar_config(const char* limiteTxt, const char* xTxt, int* limite, int* tempoXs);
+// Nome curto do erro para o JSON ("limite", "x" ou "nenhum").
+const char* web_campo_erro_config(ErroConfig e);
+// Mensagem para a pessoa, por exemplo
+// "O limite deve ser um número inteiro entre 30 e 100 dB."
+// Devolve o tamanho escrito (0 se não coube).
+size_t web_mensagem_erro_config(ErroConfig e, char* saida, size_t tam);
 // Compara a senha digitada com a certa, sempre no mesmo tempo (não revela,
 // pela demora da resposta, quantas letras do começo estavam certas).
 bool web_senha_confere(const char* digitada, const char* certa);

@@ -217,15 +217,24 @@ static void rotaConfig() {
   }
   bloqueio.registrarAcerto();
 
+  // Valor inválido: responde qual campo e por quê, e NÃO aplica nada.
   int limite = 0, tempoXs = 0;
-  if (!web_ler_config(servidor.arg("limite").c_str(), servidor.arg("x").c_str(),
-                      &limite, &tempoXs)) {
-    responderJson(400, "{\"ok\":false,\"erro\":\"faixa\"}");
+  const ErroConfig erro = web_validar_config(servidor.arg("limite").c_str(),
+                                             servidor.arg("x").c_str(), &limite, &tempoXs);
+  if (erro != ErroConfig::NENHUM) {
+    char texto[96], json[160];
+    web_mensagem_erro_config(erro, texto, sizeof(texto));
+    snprintf(json, sizeof(json), "{\"ok\":false,\"erro\":\"%s\",\"mensagem\":\"%s\"}",
+             web_campo_erro_config(erro), texto);
+    Serial.printf("[web] configuracao recusada (%s): limite='%s' x='%s'\n",
+                  web_campo_erro_config(erro), servidor.arg("limite").c_str(),
+                  servidor.arg("x").c_str());
+    responderJson(400, json);
     return;
   }
   const ResultadoSalvar r = armazenamento_salvar(limite, tempoXs);
-  if (!r.aceito) {
-    responderJson(400, "{\"ok\":false,\"erro\":\"faixa\"}");
+  if (!r.aceito) {   // não deve acontecer: a faixa é a mesma do armazenamento
+    responderJson(400, "{\"ok\":false,\"erro\":\"faixa\",\"mensagem\":\"Valores recusados.\"}");
     return;
   }
   Serial.printf("[web] configuracao pela pagina: limite = %d dB, X = %d s (%s)\n", limite,

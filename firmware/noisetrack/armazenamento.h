@@ -17,7 +17,7 @@ struct ResultadoSalvar {
 // Chamar depois de tarefa_audio_iniciar(). Devolve false se a memória não abriu.
 bool armazenamento_iniciar();
 
-// Valida (30–120 dB e 1–600 s), grava só o que mudou e atualiza a tarefa.
+// Valida (30–100 dB e 1–60 s), grava só o que mudou e atualiza a tarefa.
 ResultadoSalvar armazenamento_salvar(int limiteDb, int tempoXs);
 
 // Valores guardados agora na flash (ou os padrões, se faltarem ou forem inválidos).

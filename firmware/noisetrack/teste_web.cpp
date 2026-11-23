@@ -74,16 +74,59 @@ bool teste_web_rodar() {
 
   // ---------- Validação do formulário ----------
   {
+    // Casos válidos: os extremos e um do meio.
     int l = 0, x = 0;
-    const bool bons = web_ler_config("30", "1", &l, &x) && l == 30 && x == 1 &&
-                      web_ler_config("120", "600", &l, &x) && l == 120 && x == 600 &&
-                      web_ler_config("70", "8", &l, &x) && l == 70 && x == 8;
-    const bool ruins = !web_ler_config("29", "5", &l, &x) && !web_ler_config("121", "5", &l, &x) &&
-                       !web_ler_config("70", "0", &l, &x) && !web_ler_config("70", "601", &l, &x) &&
-                       !web_ler_config("abc", "5", &l, &x) && !web_ler_config("70.5", "5", &l, &x) &&
-                       !web_ler_config("", "5", &l, &x) && !web_ler_config("70", "5x", &l, &x) &&
-                       !web_ler_config(nullptr, "5", &l, &x);
-    conferir("validacao de limite (30-120) e X (1-600)", bons && ruins);
+    const bool bons =
+        web_validar_config("30", "1", &l, &x) == ErroConfig::NENHUM && l == 30 && x == 1 &&
+        web_validar_config("100", "60", &l, &x) == ErroConfig::NENHUM && l == 100 && x == 60 &&
+        web_validar_config("70", "8", &l, &x) == ErroConfig::NENHUM && l == 70 && x == 8;
+    conferir("config valida: 30/1, 100/60 e 70/8", bons);
+  }
+  {
+    // Recusados: o motivo certo e os valores de saída intocados.
+    struct Caso { const char* limite; const char* x; ErroConfig esperado; };
+    const Caso casos[] = {
+        {"29", "5", ErroConfig::LIMITE_FAIXA},       // abaixo do mínimo
+        {"101", "5", ErroConfig::LIMITE_FAIXA},      // acima do máximo
+        {"120", "5", ErroConfig::LIMITE_FAIXA},      // o máximo antigo não vale mais
+        {"70", "0", ErroConfig::X_FAIXA},
+        {"70", "61", ErroConfig::X_FAIXA},
+        {"70", "600", ErroConfig::X_FAIXA},
+        {"abc", "5", ErroConfig::LIMITE_NAO_NUMERO}, // texto no lugar de número
+        {"70.5", "5", ErroConfig::LIMITE_NAO_NUMERO},// não inteiro
+        {"", "5", ErroConfig::LIMITE_NAO_NUMERO},
+        {nullptr, "5", ErroConfig::LIMITE_NAO_NUMERO},
+        {"70", "cinco", ErroConfig::X_NAO_NUMERO},
+        {"70", "5x", ErroConfig::X_NAO_NUMERO},
+        {"70", "2.5", ErroConfig::X_NAO_NUMERO},
+        {"70", "", ErroConfig::X_NAO_NUMERO},
+        {"99999999999999999999", "5", ErroConfig::LIMITE_FAIXA},   // estouro do strtol
+    };
+    bool todos = true;
+    for (const Caso& c : casos) {
+      int l = -7, x = -7;   // marcador: não pode ser alterado
+      const ErroConfig e = web_validar_config(c.limite, c.x, &l, &x);
+      if (e != c.esperado || l != -7 || x != -7) {
+        todos = false;
+        Serial.printf("[teste-web]   falhou: limite='%s' x='%s'\n", c.limite ? c.limite : "(nulo)",
+                      c.x);
+      }
+    }
+    conferir("config invalida: abaixo, acima, texto e decimal recusados", todos);
+  }
+  {
+    char m[96];
+    const bool msgLimite =
+        web_mensagem_erro_config(ErroConfig::LIMITE_FAIXA, m, sizeof(m)) > 0 &&
+        strcmp(m, "O limite deve ser um número inteiro entre 30 e 100 dB.") == 0;
+    const bool msgX =
+        web_mensagem_erro_config(ErroConfig::X_NAO_NUMERO, m, sizeof(m)) > 0 &&
+        strcmp(m, "O tempo deve ser um número inteiro entre 1 e 60 segundos.") == 0;
+    const bool campos = strcmp(web_campo_erro_config(ErroConfig::LIMITE_NAO_NUMERO), "limite") == 0 &&
+                        strcmp(web_campo_erro_config(ErroConfig::X_FAIXA), "x") == 0;
+    char pequeno[8];
+    const bool naoCabe = web_mensagem_erro_config(ErroConfig::X_FAIXA, pequeno, sizeof(pequeno)) == 0;
+    conferir("config invalida: mensagem clara por campo", msgLimite && msgX && campos && naoCabe);
   }
 
   // ---------- Senha ----------

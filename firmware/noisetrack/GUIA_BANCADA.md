@@ -128,8 +128,8 @@ Com `COMANDOS_SERIAL 1` (padrão), digite no monitor e aperte Enter:
 | `wifi` | Estado da rede, IP e horário | Placa real e simulação |
 | `wifi apagar` | Apaga a rede salva (o AP de setup liga) | Placa real e simulação |
 | `web` | Endereço da página, clientes e senha de configuração | Placa real e simulação |
-| `limite 70` | Muda e grava o limite (30 a 120 dB) | Placa real e simulação |
-| `x 8` | Muda e grava o tempo X (1 a 600 s) | Placa real e simulação |
+| `limite 70` | Muda e grava o limite (30 a 100 dB) | Placa real e simulação |
+| `x 8` | Muda e grava o tempo X (1 a 60 s) | Placa real e simulação |
 | `80` / `auto` | Força o nível simulado / volta ao automático | **Só com `FONTE_SIMULADA 1`** |
 
 Na partida aparece a lista do que existe na configuração gravada:
@@ -151,7 +151,7 @@ Respostas típicas:
 [rede] Rede: NoiseTrack-Setup | Senha: XXXXXXXX | Config: YYYYYYYY      <- etiqueta
 [prefs] limite = 70 aceito, gravado                                       <- limite 70
 [prefs] limite 200 recusado (fora da faixa)                               <- limite 200
-[prefs] 'limite abc' ignorado: use 'limite 30' a 'limite 120'             <- texto inválido nunca vira 0
+[prefs] 'limite abc' ignorado: use 'limite 30' a 'limite 100'             <- texto inválido nunca vira 0
 [wifi] rede salva apagada                                                 <- wifi apagar
 [serial] 'oi' ignorado                                                    <- comando desconhecido
 ```

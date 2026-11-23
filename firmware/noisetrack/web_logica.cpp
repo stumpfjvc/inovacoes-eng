@@ -38,14 +38,46 @@ bool web_ler_inteiro(const char* s, long* v) {
   return resto != s && *resto == '\0';
 }
 
-bool web_ler_config(const char* limiteTxt, const char* xTxt, int* limite, int* tempoXs) {
+ErroConfig web_validar_config(const char* limiteTxt, const char* xTxt, int* limite, int* tempoXs) {
   long l = 0, x = 0;
-  if (!web_ler_inteiro(limiteTxt, &l) || !web_ler_inteiro(xTxt, &x)) return false;
-  if (l < LIMITE_MIN_DB || l > LIMITE_MAX_DB) return false;
-  if (x < TEMPO_X_MIN_S || x > TEMPO_X_MAX_S) return false;
+  if (!web_ler_inteiro(limiteTxt, &l))           return ErroConfig::LIMITE_NAO_NUMERO;
+  if (l < LIMITE_MIN_DB || l > LIMITE_MAX_DB)    return ErroConfig::LIMITE_FAIXA;
+  if (!web_ler_inteiro(xTxt, &x))                return ErroConfig::X_NAO_NUMERO;
+  if (x < TEMPO_X_MIN_S || x > TEMPO_X_MAX_S)    return ErroConfig::X_FAIXA;
   *limite  = (int)l;
   *tempoXs = (int)x;
-  return true;
+  return ErroConfig::NENHUM;
+}
+
+const char* web_campo_erro_config(ErroConfig e) {
+  switch (e) {
+    case ErroConfig::LIMITE_NAO_NUMERO:
+    case ErroConfig::LIMITE_FAIXA:      return "limite";
+    case ErroConfig::X_NAO_NUMERO:
+    case ErroConfig::X_FAIXA:           return "x";
+    case ErroConfig::NENHUM:            break;
+  }
+  return "nenhum";
+}
+
+size_t web_mensagem_erro_config(ErroConfig e, char* saida, size_t tam) {
+  int n = 0;
+  switch (e) {
+    case ErroConfig::LIMITE_NAO_NUMERO:
+    case ErroConfig::LIMITE_FAIXA:
+      n = snprintf(saida, tam, "O limite deve ser um número inteiro entre %d e %d dB.",
+                   LIMITE_MIN_DB, LIMITE_MAX_DB);
+      break;
+    case ErroConfig::X_NAO_NUMERO:
+    case ErroConfig::X_FAIXA:
+      n = snprintf(saida, tam, "O tempo deve ser um número inteiro entre %d e %d segundos.",
+                   TEMPO_X_MIN_S, TEMPO_X_MAX_S);
+      break;
+    case ErroConfig::NENHUM:
+      n = snprintf(saida, tam, "OK");
+      break;
+  }
+  return (n > 0 && (size_t)n < tam) ? (size_t)n : 0;
 }
 
 bool web_senha_confere(const char* digitada, const char* certa) {
