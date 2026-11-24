@@ -44,7 +44,8 @@ static uint32_t tUltimoPasso    = 0;
 static uint32_t tUltimoNtp      = 0;
 static bool     mdnsIniciado    = false;
 static bool     ntpIniciado     = false;
-static bool     ntpSincronizado = false;
+// volatile: a tarefa da nuvem lê (rede_horario_acertado), o loop() escreve.
+static volatile bool ntpSincronizado = false;
 
 // ---------- Credenciais ----------
 static void carregarCredenciais() {
@@ -317,3 +318,4 @@ void rede_imprimir_etiqueta() {
 
 const char* rede_senha_config() { return senhaConfig; }
 const char* rede_id() { return idAparelho; }
+bool rede_horario_acertado() { return ntpSincronizado; }

@@ -8,6 +8,8 @@
 #include <ctype.h>
 #include <math.h>
 #include "mbedtls/base64.h"
+#include "mbedtls/x509.h"
+#include "mbedtls/ssl.h"
 
 const char* nuvem_nome_resultado(ResultadoNuvem r) {
   switch (r) {
@@ -19,6 +21,7 @@ const char* nuvem_nome_resultado(ResultadoNuvem r) {
     case ResultadoNuvem::ERRO_SERVIDOR:     return "erro do servidor";
     case ResultadoNuvem::RESPOSTA_INVALIDA: return "resposta invalida";
     case ResultadoNuvem::FORA_DA_FAIXA:     return "limite/X fora da faixa";
+    case ResultadoNuvem::ERRO_CERTIFICADO:  return "certificado recusado";
   }
   return "?";
 }
@@ -405,6 +408,43 @@ ResultadoNuvem nuvem_interpretar_resposta(int status, const char* corpo,
     default:
       return ResultadoNuvem::RESPOSTA_INVALIDA;   // não é número inteiro
   }
+}
+
+// ---------- Certificado ----------
+int nuvem_comparar_data(const DataHora& a, const DataHora& b) {
+  const int va[6] = {a.ano, a.mes, a.dia, a.hora, a.min, a.seg};
+  const int vb[6] = {b.ano, b.mes, b.dia, b.hora, b.min, b.seg};
+  for (int i = 0; i < 6; i++) {   // compara do ano para o segundo, como num dicionário
+    if (va[i] < vb[i]) return -1;
+    if (va[i] > vb[i]) return 1;
+  }
+  return 0;
+}
+
+ValidadeCert nuvem_validade(const DataHora& inicio, const DataHora& fim, const DataHora& agora) {
+  if (nuvem_comparar_data(agora, inicio) < 0) return ValidadeCert::AINDA_NAO_VALIDO;
+  if (nuvem_comparar_data(agora, fim) > 0)    return ValidadeCert::VENCIDO;
+  return ValidadeCert::OK;
+}
+
+const char* nuvem_nome_validade(ValidadeCert v) {
+  switch (v) {
+    case ValidadeCert::OK:               return "dentro da validade";
+    case ValidadeCert::AINDA_NAO_VALIDO: return "ainda nao valido (relogio errado?)";
+    case ValidadeCert::VENCIDO:          return "vencido";
+  }
+  return "?";
+}
+
+bool nuvem_erro_eh_certificado(int codigo) {
+  // Erros do módulo X.509 do mbedTLS ficam entre -0x2080 e -0x3000 (o principal é
+  // MBEDTLS_ERR_X509_CERT_VERIFY_FAILED: raiz desconhecida, assinatura ou nome).
+  if (codigo <= MBEDTLS_ERR_X509_FEATURE_UNAVAILABLE && codigo >= MBEDTLS_ERR_X509_FATAL_ERROR) {
+    return true;
+  }
+  return codigo == MBEDTLS_ERR_SSL_PEER_VERIFY_FAILED ||
+         codigo == MBEDTLS_ERR_SSL_CA_CHAIN_REQUIRED ||
+         codigo == MBEDTLS_ERR_SSL_BAD_HS_CERTIFICATE;
 }
 
 // ---------- Espera ----------
