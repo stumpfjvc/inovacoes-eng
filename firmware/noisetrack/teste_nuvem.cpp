@@ -300,6 +300,35 @@ bool teste_nuvem_rodar() {
   nuvem_mascarar_chave("curta", mascara, sizeof(mascara));
   conferir("chave mascarada no Serial", mascaraOk && strcmp(mascara, "***") == 0);
 
+  // ---------- Certificado (TLS verificado) ----------
+  const DataHora ini  = {2026, 10, 24, 13, 22, 36};
+  const DataHora fimC = {2027, 1, 22, 14, 22, 32};
+  const DataHora hoje = {2026, 11, 24, 12, 0, 0};
+  conferir("comparar datas (ano, mes, dia, hora, minuto, segundo)",
+           nuvem_comparar_data(ini, fimC) < 0 && nuvem_comparar_data(fimC, ini) > 0 &&
+           nuvem_comparar_data(ini, ini) == 0 &&
+           nuvem_comparar_data({2026, 10, 24, 13, 22, 37}, ini) > 0 &&   // 1 s depois
+           nuvem_comparar_data({2026, 9, 30, 23, 59, 59}, ini) < 0);     // mês antes, mesmo com dia maior
+  conferir("certificado dentro da validade",
+           nuvem_validade(ini, fimC, hoje) == ValidadeCert::OK &&
+           nuvem_validade(ini, fimC, ini) == ValidadeCert::OK &&    // no primeiro segundo
+           nuvem_validade(ini, fimC, fimC) == ValidadeCert::OK);    // no último segundo
+  conferir("certificado vencido",
+           nuvem_validade(ini, fimC, {2027, 1, 22, 14, 22, 33}) == ValidadeCert::VENCIDO &&
+           nuvem_validade(ini, fimC, {2030, 1, 1, 0, 0, 0}) == ValidadeCert::VENCIDO);
+  conferir("certificado ainda nao valido (relogio sem NTP, em 1970)",
+           nuvem_validade(ini, fimC, {1970, 1, 1, 0, 0, 0}) == ValidadeCert::AINDA_NAO_VALIDO);
+  conferir("erros de certificado x erros de rede",
+           nuvem_erro_eh_certificado(-0x2700) &&     // X509: falha na verificação (raiz ou nome)
+           nuvem_erro_eh_certificado(-0x2180) &&     // X509: formato inválido
+           nuvem_erro_eh_certificado(-0x7800) &&     // SSL: verificação do servidor falhou
+           !nuvem_erro_eh_certificado(0) &&
+           !nuvem_erro_eh_certificado(-0x6800) &&    // SSL: tempo esgotado
+           !nuvem_erro_eh_certificado(-0x0050) &&    // rede: conexão interrompida
+           !nuvem_erro_eh_certificado(-1));
+  conferir("nome do resultado de certificado",
+           strcmp(nuvem_nome_resultado(ResultadoNuvem::ERRO_CERTIFICADO), "certificado recusado") == 0);
+
   Serial.printf("[teste-nuvem] === %s (%d falha(s)) ===\n",
                 falhas == 0 ? "TUDO PASS" : "HOUVE FAIL", falhas);
   return falhas == 0;

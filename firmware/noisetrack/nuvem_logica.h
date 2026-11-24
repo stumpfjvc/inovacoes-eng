@@ -15,7 +15,8 @@ enum class ResultadoNuvem : uint8_t {
   APARELHO_INVALIDO,  // o banco não reconheceu o ID/chave do aparelho
   ERRO_SERVIDOR,      // outro código HTTP de erro
   RESPOSTA_INVALIDA,  // JSON ruim, campo faltando ou valor que não é número inteiro
-  FORA_DA_FAIXA       // limite/X fora de 30–100 dB / 1–60 s
+  FORA_DA_FAIXA,      // limite/X fora de 30–100 dB / 1–60 s
+  ERRO_CERTIFICADO    // TLS verificado: cadeia, nome do servidor ou data recusados
 };
 const char* nuvem_nome_resultado(ResultadoNuvem r);
 
@@ -69,6 +70,30 @@ FimHttp nuvem_fim_da_resposta(const char* bruto, size_t n, size_t* tamTotal, boo
 // página (web_validar_config). Só escreve *limite e *segundos se der OK.
 ResultadoNuvem nuvem_interpretar_resposta(int status, const char* corpo,
                                           int* limite, int* segundos);
+
+// ---------- Certificado (TLS verificado) ----------
+// Data e hora em UTC, como vêm no certificado (ano completo, mês de 1 a 12).
+struct DataHora {
+  int ano, mes, dia, hora, min, seg;
+};
+// -1 se a < b, 0 se iguais, 1 se a > b.
+int nuvem_comparar_data(const DataHora& a, const DataHora& b);
+
+// O mbedTLS desta plataforma NÃO confere a data dos certificados
+// (CONFIG_MBEDTLS_HAVE_TIME_DATE desligado), então o firmware confere aqui,
+// depois do NTP, cada certificado que o servidor mandou.
+enum class ValidadeCert : uint8_t {
+  OK,                // inicio <= agora <= fim
+  AINDA_NAO_VALIDO,  // agora < inicio (relógio errado ou certificado do futuro)
+  VENCIDO            // agora > fim
+};
+ValidadeCert nuvem_validade(const DataHora& inicio, const DataHora& fim, const DataHora& agora);
+const char* nuvem_nome_validade(ValidadeCert v);
+
+// true se o código de erro do mbedTLS (o que WiFiClientSecure::lastError devolve)
+// é de certificado: cadeia que não chega numa raiz do nuvem_ca.h, assinatura
+// errada ou nome do servidor diferente. Os outros (rede, tempo) são "sem conexão".
+bool nuvem_erro_eh_certificado(int codigoMbedtls);
 
 // ---------- Espera entre tentativas ----------
 // Sucesso: volta a NUVEM_INTERVALO_MS. Falha: dobra, até NUVEM_ESPERA_MAX_MS

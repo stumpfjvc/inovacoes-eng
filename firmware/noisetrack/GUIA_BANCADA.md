@@ -654,28 +654,64 @@ sem sinal), e o site (`docs/`) mostra. Na volta, o banco devolve o limite e o X.
    o firmware recusa e avisa.
 5. Compile e grave. O Wi-Fi do local precisa estar configurado (etapa g).
 
+> **Padrão: `NUVEM_TLS_VALIDAR 1`** (TLS verificado). Ele já reiniciou a placa
+> (watchdog); foi corrigido e validado na placa (sem reinício, 49 de 49 envios,
+> maior tempo sem a ociosa de 8 ms). **A primeira conexão leva cerca de 10 s**:
+> a nuvem espera o relógio (NTP) e depois faz o aperto de mão verificado, e o
+> site só mostra a placa **Online depois disso**. Daí em diante a conexão é
+> reaproveitada. Detalhes em "Reinício pelo watchdog com TLS verificado", abaixo.
+
 **Serial na partida:**
 ```
 [nuvem] ligada: SEU-PROJETO.supabase.co | ID noisetrack-xxxxxx | chave publica sb_publishab...(46 caracteres) | a cada 1000 ms com o Wi-Fi conectado
-[nuvem] AVISO: HTTPS SEM verificacao do certificado (NUVEM_TLS_VALIDAR 0): ...
+[nuvem] tarefa: nucleo 0, prioridade 0 (a mesma da tarefa ociosa: elas se revezam e o watchdog de 5 s continua ligado) | limite do aperto de mao TLS: 20000 ms
+[nuvem] TLS verificado: cadeia ate uma das 4 raizes do nuvem_ca.h, nome do servidor e data (so depois do NTP). Se nao conferir, nao envia.
 ```
-Depois que o Wi-Fi conecta:
+(Com `#define NUVEM_TLS_VALIDAR 0` no `config_local.h`, só para diagnóstico, no
+lugar da última linha aparece `[nuvem] AVISO: HTTPS SEM verificacao do
+certificado`.) A nuvem **espera o relógio** (o certificado depende da data)
+antes de conectar:
 ```
-[nuvem] ok: enviado e recebido limite 65 dB, X 5 s (de novo a cada 1000 ms)
+[nuvem] aguardando o horario do NTP para conferir o certificado (o alarme local funciona normalmente)
+[ntp] horario acertado: 24/11/2026 14:03:22 (UTC-3)
+[nuvem] horario acertado: conectando com TLS verificado
+[nuvem] ler as 4 raizes do nuvem_ca.h (a biblioteca refaz isso a cada conexao nova): NN ms
+[nuvem] conexao nova (ok): DNS NN ms | TCP+TLS NNNN ms (a tarefa ociosa rodou ~NNNN ms, NN%) | datas N ms | maior tempo sem a tarefa ociosa rodar: N ms (watchdog: 5000) | pilha livre minima NNNN bytes
+[nuvem] ok: enviado e recebido limite 65 dB, X 5 s | este envio levou NNNN ms (com a conexao, se foi nova) | de novo a cada 1000 ms
 ```
-Os envios seguintes que dão certo **não** imprimem nada (para não encher o
-Serial). Só aparecem as falhas e a volta ao normal.
+A linha `conexao nova` sai **a cada conexão aberta** (a primeira e as seguintes, se
+o Wi-Fi ou o servidor derrubarem). Os envios seguintes que dão certo **não**
+imprimem nada (para não encher o Serial). Só aparecem as falhas e a volta ao
+normal.
 
 **Comando `nuvem`** (digite no monitor):
 ```
-[nuvem] ligada | ID noisetrack-xxxxxx | servidor SEU-PROJETO.supabase.co | TLS SEM verificacao (NUVEM_TLS_VALIDAR 0)
+[nuvem] ligada | ID noisetrack-xxxxxx | servidor SEU-PROJETO.supabase.co | TLS verificado (cadeia + nome + data)
+[nuvem] horario (NTP): acertado | ultimo erro de certificado: nenhum
 [nuvem] Wi-Fi do local: conectado | ultimo resultado: ok (HTTP 200) ha 3 s
 [nuvem] ultimo sucesso: ha 0 s | espera atual: 1.0 s | tentativas 120, sucessos 120
 [nuvem] conexoes TLS abertas: 1 (com keep-alive fica perto de 1) | ultimo envio levou 240 ms | ciclos pulados: 0 | intervalo 1000 ms
+[nuvem] primeira conexao (ok): DNS NN ms | TCP+TLS NNNN ms (a tarefa ociosa rodou ~NNNN ms, NN%) | datas N ms | maior tempo sem a tarefa ociosa rodar: N ms (watchdog: 5000) | pilha livre minima NNNN bytes
+[nuvem] primeiro envio que deu certo: NNNN ms | pior tempo sem a tarefa ociosa rodar: N ms de 5000 (watchdog) | tarefa da nuvem: nucleo 0, prioridade 0
 [nuvem] configuracao recebida: limite 65 dB, X 5 s | em uso: limite 65 dB, X 5 s
 [nuvem] pilha livre minima da tarefa: ... de 12288 bytes | memoria livre ... (minima ...)
 ```
-Como ler a linha nova (números de exemplo):
+(Com `NUVEM_TLS_VALIDAR 0` os números de TCP+TLS são menores e a linha
+`ler as N raizes` não aparece. Se houve mais de uma conexão, aparece também a
+linha `ultima conexao`.)
+
+Como ler as linhas de medida:
+- **TCP+TLS:** o tempo total do aperto de mão, em ms. É o número a comparar entre
+  `NUVEM_TLS_VALIDAR 0` e `1`.
+- **a tarefa ociosa rodou ~X ms (Y%):** a tarefa da nuvem e a ociosa dividem o
+  núcleo 0. Perto de **metade** significa que o revezamento está funcionando.
+  **Perto de 0%** significa que a ociosa não está recebendo CPU: o watchdog corre
+  risco (confira a prioridade da tarefa da nuvem, que tem que ser 0).
+- **maior tempo sem a tarefa ociosa rodar:** é a folga do watchdog. O reinício
+  acontece em **5000 ms**. O esperado, com a prioridade 0, é poucos ms. Acima de
+  2500 ms o firmware imprime um `AVISO`.
+
+Como ler a linha de conexões:
 - **conexoes TLS abertas:** com tudo certo fica em **1** (ou poucas, se o Wi-Fi
   ou o servidor caíram). Se **subir uma por segundo**, a conexão não está sendo
   reaproveitada: o servidor está fechando a cada resposta.
@@ -714,7 +750,26 @@ site mostra o nível da placa mudando.
   local, ou a URL está errada. As tentativas ficam mais espaçadas (1, 2, 4, 8,
   16, 32, até 60 s) e voltam a cada 1 s no primeiro sucesso.
 - `ultimo resultado: ainda nao tentou`: o Wi-Fi do local ainda não conectou
-  (no portal do AP de setup a nuvem não tenta).
+  (no portal do AP de setup a nuvem não tenta), ou o relógio ainda não acertou.
+- `[nuvem] aguardando o horario do NTP ...` sem nunca aparecer
+  `[ntp] horario acertado`, e depois `[nuvem] ainda sem horario do NTP ha 60 s`:
+  a rede do local não deixa sair para a internet (ou bloqueia o NTP, porta UDP
+  123). A nuvem fica esperando e conecta sozinha quando o relógio acertar.
+- `[nuvem] certificado recusado: cadeia ou nome do servidor nao conferem (X509 - ...)`
+  e `falha: certificado recusado`: o certificado do servidor não chega em
+  nenhuma das raízes do `nuvem_ca.h`, ou o nome não bate com o `NUVEM_URL`.
+  Confira a URL; se estiver certa, o provedor pode ter trocado de autoridade:
+  veja "Atualizar o certificado raiz" abaixo. **A nuvem não envia** nesse caso
+  (não cai para o modo sem verificação), mas o alarme local segue normal.
+- A placa **reinicia** com `Task watchdog got triggered ... IDLE0 (CPU 0) ...
+  CPU 0: nuvem`: a tarefa da nuvem monopolizou o núcleo 0 (aperto de mão TLS
+  verificado). Confira se a prioridade da tarefa da nuvem é **0** (a linha
+  `[nuvem] tarefa: nucleo 0, prioridade 0` na partida) e leia "Reinício pelo
+  watchdog com TLS verificado". Para voltar a uma placa estável na hora, apague o
+  `#define NUVEM_TLS_VALIDAR 1` do `config_local.h`.
+- `[nuvem] certificado recusado: CN=...: vencido (...)` ou `ainda nao valido`:
+  a data do certificado não confere com o relógio. "Vencido" é raro (o servidor
+  troca o certificado antes); "ainda não válido" quase sempre é relógio errado.
 
 #### Tempo real (1 s): custo de tráfego e como voltar para 10 s
 
@@ -764,13 +819,141 @@ do computador ou celular estiver **adiantado em mais de uns 10 s**, a placa pode
 aparecer Offline mesmo enviando. Relógios acertados pela internet (o normal) não
 dão problema.
 
-**Sobre o aviso "SEM verificacao do certificado"** (`NUVEM_TLS_VALIDAR 0`): a
-conversa com o servidor é criptografada, então quem estiver na mesma rede não
-lê a chave do aparelho. Mas o aparelho não confere se do outro lado está mesmo
-o Supabase. Alguém que controle a rede (um roteador mal-intencionado, por
-exemplo) poderia se passar pelo servidor, ver a chave do aparelho e mandar um
-limite/X falso. Para fechar essa porta: siga as instruções do `nuvem_ca.h`
-(copiar o certificado raiz do site) e use `NUVEM_TLS_VALIDAR 1`.
+#### TLS verificado: o que protege e como manter
+
+**O que protege.** O HTTPS faz duas coisas: **embaralha** a conversa (ninguém
+na rede lê a chave do aparelho) e, com a verificação ligada, **confere quem
+está do outro lado**. Sem a conferência, alguém que controle a rede do local
+(um roteador mal-intencionado, por exemplo) poderia se passar pelo Supabase,
+ver a chave do aparelho e mandar um limite/X falso. Com `NUVEM_TLS_VALIDAR 1`
+(o padrão), o aparelho confere três coisas antes de mandar qualquer dado:
+1. **A cadeia:** o certificado do servidor foi assinado (direto ou por um
+   intermediário) por uma das **raízes** guardadas no `nuvem_ca.h`.
+2. **O nome:** o certificado é mesmo de `SEU-PROJETO.supabase.co`.
+3. **A data:** cada certificado está dentro da validade. Por isso a nuvem só
+   conecta depois do `[ntp] horario acertado`.
+
+Se qualquer uma falhar, a nuvem **não envia** (nunca troca sozinha para o modo
+sem verificação) e tenta de novo mais tarde; o alarme local não muda nada.
+
+**Por que 4 raízes.** O Supabase fica atrás da Cloudflare, que usa
+certificados do Let's Encrypt (raízes ISRG X1 e X2) ou do Google Trust Services
+(raízes GTS R1 e R4) e pode trocar entre eles na renovação. Com as 4, essa
+troca não derruba a nuvem. Custo: cerca de 8 KB de flash (82,7% → 83,3%).
+
+**Atualizar o certificado raiz** (só se aparecer `certificado recusado` com a
+URL certa): siga o passo a passo no começo do `nuvem_ca.h`. Resumo: descubra a
+raiz atual pelo cadeado do navegador (Certificado → Detalhes → a linha de cima
+→ Exportar em "Base64 (PEM)"), cole o texto no bloco do `nuvem_ca.h` junto dos
+outros, compile e grave. Faça isso num PC **sem antivírus que inspecione
+HTTPS**: o Norton, por exemplo, troca a cadeia pela dele ("Norton Web/Mail
+Shield Root"), e essa raiz não serve para a placa.
+
+**E se vencer?** O certificado do **site** vence a cada ~90 dias, mas o
+servidor troca sozinho antes; a placa não precisa de nada, porque guarda só as
+**raízes**. As raízes duram muito mais (a primeira das 4 vence em 2035). Quando
+uma raiz estiver para vencer, o provedor passa a usar outra antes; se a placa
+não tiver a nova, aparece `certificado recusado` e é só atualizar como acima.
+
+**Modo sem verificação (`NUVEM_TLS_VALIDAR 0`).** Só para diagnóstico: ponha no
+`config_local.h`. A conversa é criptografada, mas o aparelho não confere quem
+está do outro lado, e o Serial avisa
+`[nuvem] AVISO: HTTPS SEM verificacao do certificado`. Não deixe assim no
+aparelho instalado.
+
+#### Reinício pelo watchdog com TLS verificado (corrigido e validado)
+
+**Resultado na placa (com a correção):** sem reinício, **49 de 49 envios**,
+**maior tempo sem a tarefa ociosa de 8 ms** (o watchdog reinicia em 5000 ms) e
+**primeira conexão de cerca de 10 s**. Por isso o padrão voltou a ser 1. Esses
+10 s são o aperto de mão verificado dividindo o núcleo com a tarefa ociosa; **o
+site só mostra a placa Online depois da primeira conexão**.
+
+**O que aconteceu.** Com `NUVEM_TLS_VALIDAR 1`, uns segundos depois de
+`[nuvem] horario acertado: conectando com TLS verificado`, a placa reiniciava,
+com `E task_wdt: Task watchdog got triggered ... IDLE0 (CPU 0) ... CPU 0: nuvem`.
+Com `NUVEM_TLS_VALIDAR 0` não acontecia.
+
+**A causa, em palavras simples.**
+- O ESP32 tem um "cão de guarda" (watchdog). Se a **tarefa ociosa do núcleo 0**
+  (`IDLE0`: a que roda quando não há mais nada para fazer) ficar mais de **5 s**
+  sem rodar, ele reinicia a placa. No SDK desta placa está assim: 5 s, reinicia,
+  e só o núcleo 0 é vigiado.
+- A tarefa da nuvem rodava no núcleo 0 com prioridade 1, **acima** da ociosa
+  (prioridade 0). Uma tarefa de prioridade maior que está sempre ocupada **não
+  deixa** a ociosa rodar.
+- O aperto de mão TLS **com verificação** valida a cadeia de certificados com
+  contas de curva elíptica feitas por software. A biblioteca faz isso **dentro de
+  uma chamada só**, sem devolver a CPU no meio: ela só dá a vez entre uma etapa e
+  outra do aperto de mão, e a conta pesada fica dentro de uma etapa. Sem
+  verificação, essa validação não acontece e o aperto de mão é bem mais curto.
+- O `CPU 0: nuvem` do log mostra exatamente isso: quem estava rodando no núcleo 0
+  quando o watchdog disparou era a tarefa da nuvem.
+
+**O que está confirmado e o que não está.** Confirmado: o log (watchdog da
+`IDLE0`, com a nuvem rodando); o `sdkconfig` do SDK da placa (5 s, reinicia, só
+o núcleo 0 vigiado, bibliotecas de criptografia compiladas para tamanho e não
+para velocidade); o código da biblioteca `WiFiClientSecure` desta versão (relê
+as raízes a cada conexão nova e só cede CPU entre etapas do aperto de mão).
+**Não confirmado:** quanto tempo o aperto de mão realmente leva. Não havia placa
+para medir, então isso é dedução. Por isso o firmware agora **mede e imprime**
+(linhas `conexao nova`, lidas acima), para a próxima rodada na bancada dar o
+número de verdade.
+
+**As opções consideradas** e o efeito de cada uma:
+
+| Opção | Áudio, regra, LED e buzzer | Wi-Fi | Resultado |
+|---|---|---|---|
+| **1. Reduzir o custo**: guardar só 1 raiz em vez de 4, ou não reler os certificados | nenhum | nenhum | **Não resolve.** O gasto grande são as assinaturas, iguais com 1 ou 4 raízes; ler as raízes é só interpretar texto (o firmware agora mede isso: `ler as N raizes`). Com 1 raiz só, uma troca de autoridade (a Cloudflare alterna entre Let's Encrypt e Google) derruba a nuvem até regravar a placa. E a biblioteca só aceita o texto das raízes, não dá para entregar já interpretadas. **Não adotada.** |
+| **2. Tirar a `IDLE0` do watchdog** (`disableCore0WDT`) | nenhum (ficam no núcleo 1, cuja ociosa nem é vigiada) | funciona igual, mas **perde a rede de segurança**: se o Wi-Fi ou outra tarefa do núcleo 0 travar de verdade, a placa não reinicia sozinha | Funciona, mas é o remédio mais caro. Desligar só durante a conexão (e religar depois) tem uma corrida: ao religar, a ociosa precisa rodar antes da próxima conferência do cronômetro, que pode cair poucos ms depois. Rara, mas possível, e daria o reinício que queremos evitar. **Não adotada.** |
+| **3. Aumentar o tempo do watchdog** (por exemplo 30 s) | nenhum | igual | Só empurra o limite: o tempo do aperto de mão depende da CPU e do certificado do servidor, e não há garantia de que caiba. E um travamento de verdade demora 30 s para reiniciar. **Não adotada como solução.** |
+| **4. Mover a nuvem para o núcleo 1** | áudio/regra/LED/buzzer têm prioridade 2 e interrompem a nuvem, então funcionam; mas **deixa de existir o núcleo só do alarme** | melhora (sai do núcleo do Wi-Fi) | A ociosa do núcleo 1 não é vigiada, então o watchdog não dispararia. Mas a nuvem passaria a dividir o núcleo 1 com o `loop()` (mesma prioridade, revezam a cada 1 ms, e o `loop()` quase nunca espera): a página, o WebSocket, o Serial e a máquina do Wi-Fi ficariam na metade da velocidade durante os segundos do aperto de mão. **Não adotada.** |
+| **5. Prioridade 0 no núcleo 0** | **nenhum efeito**: ficam em outro núcleo; só dividem uma trava, segurada por microssegundos | **nenhum efeito ruim**: as tarefas do Wi-Fi têm prioridade muito maior e interrompem a nuvem na hora | **Adotada.** |
+
+**O que foi feito (opção 5).** A tarefa da nuvem agora tem **prioridade 0**, a
+mesma da tarefa ociosa, e continua no núcleo 0. O escalonador reveza tarefas de
+mesma prioridade a cada 1 ms, então, mesmo com o aperto de mão ocupado, a ociosa
+roda a cada ~2 ms e alimenta o watchdog. **O watchdog continua ligado**,
+vigiando o núcleo 0 como antes. O preço: o aperto de mão pode levar **até o
+dobro** do tempo de relógio, porque a nuvem passa a dividir o núcleo meio a meio
+com a ociosa. Por isso o limite do aperto de mão subiu de 4 s para **20 s**
+(`NUVEM_TIMEOUT_TLS_MS`; a biblioteca só confere esse limite entre etapas, então
+um limite curto demais derrubaria uma conexão prestes a dar certo). Um
+`static_assert` no `config.h` **impede compilar** com a nuvem no núcleo 0 e
+prioridade acima de 0, para ninguém desfazer isso sem querer.
+
+**O que dá e o que não dá para garantir.**
+- O mecanismo que reiniciou a placa (a ociosa sem rodar por mais de 5 s) deixa de
+  existir **por construção**: a nuvem não consegue mais monopolizar o núcleo 0.
+- O que **não** dá para garantir sem rodar na placa: que não exista outra causa
+  de reinício. Por exemplo, uma queda de tensão (brownout) por causa do pico de
+  CPU junto com o rádio Wi-Fi, numa fonte USB fraca, não depende do software. E
+  uma falha de programação só aparece rodando.
+- Por isso o padrão ficou em 0 até a validação abaixo. Ela passou na placa (ver o
+  resultado no começo desta seção) e o padrão agora é **1**. Um reinício a cada
+  conexão derrubaria o alarme, que é o coração do aparelho: se um dia isso
+  voltar, apague o `NUVEM_TLS_VALIDAR` do `config_local.h` (ou ponha 0) para
+  recuperar a placa na hora e mande o log.
+
+**Como validar na placa** (foi o roteiro seguido; repita se mudar a prioridade, o
+SDK ou as raízes):
+1. No `config_local.h`, acrescente `#define NUVEM_TLS_VALIDAR 1`, grave e abra o
+   monitor. Espere `[ntp] horario acertado` e a linha `conexao nova (ok)`.
+2. Confira os números dessa linha:
+   - **maior tempo sem a tarefa ociosa rodar:** bem abaixo de 5000 ms (o esperado
+     são poucos ms). Se aparecer o `AVISO` (2500 ms ou mais), o revezamento não
+     está funcionando como previsto: pare e mande o log.
+   - **a tarefa ociosa rodou ~X ms (Y%):** perto de metade confirma o revezamento.
+   - **TCP+TLS** na primeira conexão e nas seguintes, e **`ler as N raizes`**:
+     anote, são os números que faltavam para decidir sobre reduzir as raízes.
+3. Deixe rodando por uns 30 minutos: **nenhum reinício** (nenhum `Rebooting...`) e
+   `conexoes TLS abertas` estável.
+4. **Teste de queda:** desligue o roteador (ou o hotspot do celular) por 1 minuto
+   e religue, umas 5 vezes. A nuvem deve reconectar (cada conexão nova imprime a
+   linha de medidas). **Faça barulho acima do limite logo depois de religar**, no
+   meio do aperto de mão: o LED e o buzzer têm que disparar normalmente.
+5. Falhou em algo? Ponha `#define NUVEM_TLS_VALIDAR 0` no `config_local.h` para
+   estabilizar a placa e mande o log.
 
 ---
 

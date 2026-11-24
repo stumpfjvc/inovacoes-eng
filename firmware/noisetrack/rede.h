@@ -35,3 +35,7 @@ const char* rede_senha_config();
 
 // Identificador do aparelho, por exemplo "noisetrack-a1b2c3" (fim do MAC).
 const char* rede_id();
+
+// true depois que o NTP acertou o relógio (a linha "[ntp] horario acertado").
+// Pode ser lido de outra tarefa (a da nuvem espera isso antes do HTTPS verificado).
+bool rede_horario_acertado();

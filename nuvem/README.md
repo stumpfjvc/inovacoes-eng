@@ -180,17 +180,48 @@ tráfego e como voltar para 10 s estão na etapa (k) do
 - **A nuvem manda:** se o limite/segundos do banco for diferente do aparelho,
   vale o do banco, e o aparelho grava na memória dele.
 - O alarme local não depende da nuvem: sem internet, ele funciona igual, e o
-  aparelho tenta de novo em 10, 20, 40 e até 60 s.
+  aparelho tenta de novo com espera crescente (com 1 s: 1, 2, 4, 8... até 60 s).
 
-> ⚠️ **Conexão ainda NÃO verificada.** Por enquanto o firmware usa HTTPS sem
-> conferir o certificado do servidor (`NUVEM_TLS_VALIDAR 0`) e avisa isso no
-> Serial. A conexão é criptografada, mas alguém que controle a rede do local
-> poderia se passar pelo Supabase, ver a chave do aparelho e mandar um limite
-> falso. Para conferir o certificado, siga as instruções do
-> `firmware/noisetrack/nuvem_ca.h` e use `NUVEM_TLS_VALIDAR 1`.
+### Conexão verificada (TLS)
+
+> **A verificação está ligada por padrão** (`NUVEM_TLS_VALIDAR 1`). Ela já
+> reiniciou a placa pelo watchdog; foi corrigida (a tarefa da nuvem roda em
+> prioridade 0) e validada na placa: sem reinício, 49 de 49 envios, maior tempo
+> sem a tarefa ociosa de 8 ms. **A primeira conexão leva cerca de 10 s** (o
+> aperto de mão verificado é pesado), e o site só mostra a placa **Online depois
+> disso**; as seguintes reaproveitam a conexão. O modo sem verificação
+> (`#define NUVEM_TLS_VALIDAR 0` no `config_local.h`) é só para diagnóstico.
+> Detalhes: etapa (k) do `firmware/noisetrack/GUIA_BANCADA.md`.
+
+O firmware usa HTTPS **com verificação**. Antes de mandar qualquer dado, ele
+confere:
+
+1. **A cadeia:** o certificado do servidor chega numa das raízes guardadas em
+   `firmware/noisetrack/nuvem_ca.h` (ISRG Root X1 e X2, do Let's Encrypt, e GTS
+   Root R1 e R4, do Google Trust Services: as autoridades que a Cloudflare, na
+   frente do Supabase, costuma usar).
+2. **O nome:** o certificado é do mesmo endereço do `NUVEM_URL`.
+3. **A data:** cada certificado está na validade. O mbedTLS do ESP32 não olha a
+   data sozinho, então o firmware confere, e só depois do NTP acertar o relógio.
+
+**O que isso protege:** sem a conferência, alguém que controle a rede do local
+poderia se passar pelo Supabase, ver a chave do aparelho e mandar um limite
+falso. Com ela, a placa só conversa com o servidor certo.
+
+**Se falhar:** a nuvem não envia (nunca troca sozinha para o modo sem
+verificação), o Serial explica o motivo (`[nuvem] certificado recusado: ...`) e
+o comando `nuvem` mostra o último erro de certificado. O alarme local segue
+normal.
+
+**Atualizar a raiz** (se o provedor mudar de autoridade): instruções no começo
+do `nuvem_ca.h`. O certificado do site vence a cada ~90 dias, mas a placa só
+guarda as raízes, que duram anos (a primeira das quatro vence em 2035).
 
 ## Ainda não feito
 
-- A verificação do certificado (TLS) vem desligada: ver o aviso acima.
+- A raiz que o servidor usa hoje não foi confirmada de um PC "limpo": no PC do
+  teste, o antivírus Norton intercepta o HTTPS e mostra a cadeia dele. As 4
+  raízes cobrem as autoridades da Cloudflare; a confirmação é a placa conectar
+  (`ultimo resultado: ok`).
 - Não há limite de tentativas no pareamento. Com códigos de 8 caracteres
   aleatórios, adivinhar é muito difícil, mas evite códigos óbvios.

@@ -285,10 +285,21 @@ constexpr uint32_t WEB_BLOQUEIO_MS    = 60000;
 #endif
 // (A chave SECRETA do aparelho, NUVEM_CHAVE_APARELHO, fica no secrets.h.)
 
-// 1 = confere o certificado do servidor com o CA raiz do nuvem_ca.h.
+// 1 = TLS verificado: confere a cadeia até uma raiz do nuvem_ca.h, o nome do
+//     servidor e a data de cada certificado (só depois do NTP acertar o
+//     relógio). Se algo não conferir, a nuvem NÃO envia (nunca cai para o modo
+//     sem verificação); o alarme local segue normal.
 // 0 = HTTPS criptografado, mas SEM conferir quem é o servidor (aviso no Serial).
+//
+// O PADRÃO É 1. O aperto de mão verificado gasta vários segundos de CPU
+// (assinaturas ECDSA em software) e chegou a reiniciar a placa pelo watchdog; foi
+// corrigido com a prioridade 0 da tarefa da nuvem (abaixo) e validado na placa:
+// sem reinício, 49 de 49 envios, maior tempo sem a tarefa ociosa de 8 ms. A
+// primeira conexão leva cerca de 10 s (o site só mostra Online depois disso).
+// Detalhes: GUIA_BANCADA.md, "Reinício pelo watchdog". Para o modo sem
+// verificação (só diagnóstico), no config_local.h: #define NUVEM_TLS_VALIDAR 0
 #ifndef NUVEM_TLS_VALIDAR
-#define NUVEM_TLS_VALIDAR 0
+#define NUVEM_TLS_VALIDAR 1
 #endif
 
 // Intervalo entre envios.
@@ -305,19 +316,45 @@ constexpr uint32_t WEB_BLOQUEIO_MS    = 60000;
 constexpr uint32_t NUVEM_ESPERA_MAX_MS = 60000;
 // Timeouts curtos: o alarme local não espera por eles (a nuvem tem tarefa
 // própria), mas um envio preso atrasa os seguintes (os ciclos perdidos são pulados).
-constexpr uint32_t NUVEM_TIMEOUT_MS          = 4000;   // abrir a conexão e o aperto de mão TLS
+constexpr uint32_t NUVEM_TIMEOUT_MS          = 4000;   // abrir a conexão TCP (e, sem verificação, o aperto de mão TLS)
 constexpr uint32_t NUVEM_TIMEOUT_RESPOSTA_MS = 2000;   // esperar a resposta numa conexão já aberta
+// Aperto de mão TLS (vale com e sem verificação): o que pesa é CPU, não rede, e a
+// tarefa da nuvem divide o núcleo com a tarefa ociosa (prioridade 0, ver abaixo),
+// então o tempo de relógio chega a ser o DOBRO do tempo de CPU. O limite da
+// biblioteca só é conferido entre duas etapas do aperto de mão: se uma etapa lenta
+// passar dele, a conexão é abandonada mesmo estando prestes a dar certo. 20 s dá
+// folga. Só muda quanto a nuvem espera um servidor que travou no meio do aperto de
+// mão (para o alarme não muda nada: a nuvem tem tarefa própria). Servidor que nem
+// atende a conexão TCP continua sendo abandonado em NUVEM_TIMEOUT_MS.
+constexpr uint32_t NUVEM_TIMEOUT_TLS_MS = 20000;
 static_assert(NUVEM_TIMEOUT_MS <= 5000 && NUVEM_TIMEOUT_RESPOSTA_MS <= 5000,
               "timeouts da nuvem devem ser curtos (<= 5 s)");
+static_assert(NUVEM_TIMEOUT_TLS_MS >= NUVEM_TIMEOUT_MS && NUVEM_TIMEOUT_TLS_MS <= 30000,
+              "NUVEM_TIMEOUT_TLS_MS fora do razoavel");
 static_assert(NUVEM_INTERVALO_MS >= 250 && NUVEM_INTERVALO_MS <= NUVEM_ESPERA_MAX_MS,
               "NUVEM_INTERVALO_MS deve ficar entre 250 ms e NUVEM_ESPERA_MAX_MS (60 s)");
 
-// Tarefa da nuvem: prioridade 1 (abaixo da tarefa de áudio, que é 2) e no
-// núcleo 0, junto do Wi-Fi; a tarefa de áudio fica sozinha no núcleo 1.
-// A pilha é grande porque o HTTPS (mbedTLS) gasta bastante.
+// Tarefa da nuvem: núcleo 0, junto do Wi-Fi; a tarefa de áudio fica sozinha no
+// núcleo 1. A pilha é grande porque o HTTPS (mbedTLS) gasta bastante.
+//
+// PRIORIDADE 0 (a mesma da tarefa ociosa) É DE PROPÓSITO. O watchdog de tarefas
+// (5 s, reinicia a placa) vigia a tarefa ociosa do núcleo 0. O aperto de mão TLS
+// verificado faz contas de vários segundos numa chamada só, sem ceder a CPU. Com
+// prioridade 1, a tarefa da nuvem monopolizava o núcleo 0, a ociosa não rodava
+// por mais de 5 s e a placa reiniciava ("Task watchdog got triggered ... IDLE0").
+// Com prioridade 0, o escalonador reveza a nuvem e a ociosa a cada 1 ms
+// (fatiamento de tempo): a ociosa sempre roda e o watchdog fica inteiro, ligado,
+// vigiando o núcleo 0 como antes. O Wi-Fi não sente: as tarefas dele têm
+// prioridade bem maior e interrompem a nuvem na hora. O áudio, a regra, o LED e
+// o buzzer estão no núcleo 1 e não dividem núcleo com a nuvem.
 constexpr uint32_t    PILHA_TAREFA_NUVEM      = 12288;
-constexpr UBaseType_t PRIORIDADE_TAREFA_NUVEM = 1;
+constexpr UBaseType_t PRIORIDADE_TAREFA_NUVEM = 0;
 constexpr BaseType_t  NUCLEO_TAREFA_NUVEM     = 0;
+static_assert(PRIORIDADE_TAREFA_NUVEM < PRIORIDADE_TAREFA_AUDIO,
+              "a tarefa da nuvem tem que ter prioridade menor que a do audio");
+static_assert(NUCLEO_TAREFA_NUVEM != 0 || PRIORIDADE_TAREFA_NUVEM == 0,
+              "no nucleo 0 a tarefa da nuvem DEVE ter prioridade 0: com prioridade maior, "
+              "o aperto de mao TLS deixa a tarefa ociosa sem rodar e o watchdog reinicia a placa");
 
 // Autoteste da parte pura da nuvem (JSON, resposta, estados, espera crescente).
 #ifndef TESTE_NUVEM

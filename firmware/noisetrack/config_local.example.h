@@ -75,8 +75,10 @@
 // Com os modelos abaixo, a nuvem fica desligada (o alarme local funciona igual).
 #define NUVEM_URL           "COLE_AQUI_A_URL_DO_PROJETO"
 #define NUVEM_CHAVE_PUBLICA "COLE_AQUI_A_CHAVE_PUBLICA"
-// 0 = HTTPS sem conferir o certificado (aviso no Serial). 1 = confere com o
-// certificado do nuvem_ca.h (instruções lá dentro).
+// Padrão do config.h: 1 = TLS verificado (cadeia até as raízes do nuvem_ca.h, nome
+// do servidor e data, depois do NTP). A primeira conexão leva ~10 s.
+// 0 = HTTPS sem conferir o certificado (aviso no Serial): só para diagnóstico,
+// não deixe no aparelho instalado.
 // #define NUVEM_TLS_VALIDAR 0
 // 0 = desliga a nuvem por completo (nem compila o HTTPS).
 // #define NUVEM_ATIVA 1
