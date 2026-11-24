@@ -9,6 +9,6 @@
 // Mesmo assim, só preencha na hora de publicar; o modelo no Git fica com os
 // textos COLE_AQUI.
 window.NOISETRACK_CONFIG = {
-  url: "COLE_AQUI_A_URL_DO_PROJETO",
-  chave: "COLE_AQUI_A_CHAVE_ANON"
+  url: "https://haacvdsbogalgbnqknid.supabase.co",
+  chave: "sb_publishable_Slf0rEKlHewPVj2tXSkR_g_neILnzLw"
 };
