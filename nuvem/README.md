@@ -115,6 +115,43 @@ Rode algumas vezes, com uns 10 s entre elas, mudando o `p_nivel`. Depois, no
 **Table Editor**, veja a tabela `leituras` crescer (no máximo 1 linha a cada
 10 s por aparelho).
 
+## Cadastrar e testar um aparelho com os scripts
+
+Os passos 2 e 3 acima têm atalhos em `nuvem/ferramentas/`, para você não copiar
+chaves à mão. Rode no **Git Bash**, na pasta do projeto. Tudo o que for secreto
+fica em `~/.noisetrack/` (na sua pasta de usuário), **nunca** dentro do repositório.
+
+**1. Cadastrar** (não usa a internet):
+
+```bash
+bash nuvem/ferramentas/novo_aparelho.sh noisetrack-f6d6d5
+```
+
+- Gera a chave do aparelho e o código de pareamento, e copia o SQL para a área
+  de transferência. Na tela aparecem só o ID e o código.
+- No Supabase: **SQL Editor** → cole → **Run** → apague a query do histórico.
+- Rodar de novo com o mesmo ID **troca só a chave** (o código continua o mesmo).
+  A chave anterior fica em `<id>.chave.anterior`; apague quando não precisar mais.
+
+**2. Testar** (usa a internet). Antes, crie o arquivo `~/.noisetrack/projeto.env`
+com a URL e a chave **pública** do projeto (nunca a `service_role`):
+
+```
+SUPABASE_URL=https://SEU-PROJETO.supabase.co
+SUPABASE_CHAVE_PUBLICA=sua-chave-anon-ou-publishable
+```
+
+```bash
+bash nuvem/ferramentas/testar_sync.sh noisetrack-f6d6d5
+```
+
+- Resposta `{"limite_db":65,"segundos":5}`: deu certo.
+- `aparelho_invalido`: a chave do arquivo não confere com a do banco. Rode o
+  `novo_aparelho.sh` de novo e cole o SQL.
+
+Os scripts nunca imprimem a chave. O `projeto.env` e a pasta `~/.noisetrack/`
+não vão para o Git: confira com `git status` antes de qualquer commit.
+
 ## 4. O que cada função faz
 
 | Função | Quem chama | O que faz |
