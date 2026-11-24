@@ -8,6 +8,7 @@
 #include "armazenamento.h"
 #include "rede.h"
 #include "web.h"
+#include "nuvem.h"
 #if FONTE_SIMULADA
 #include "audio.h"
 #endif
@@ -46,6 +47,12 @@ static void interpretarLinha(char* s) {
   // Página (Parte 10): só a linha exata "web".
   if (strcmp(s, "web") == 0) {
     web_imprimir_status();
+    return;
+  }
+
+  // Nuvem (Supabase): ligada/desligada, último resultado e configuração recebida.
+  if (strcmp(s, "nuvem") == 0) {
+    nuvem_imprimir_status();
     return;
   }
 
@@ -120,7 +127,7 @@ void comandos_serial_iniciar() {
 #if FONTE_SIMULADA
   Serial.printf(" um nivel (%d a %d dB) ou 'auto' |", SIM_FORCADO_MIN_DB, SIM_FORCADO_MAX_DB);
 #endif
-  Serial.println(" 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta'");
+  Serial.println(" 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta' | 'nuvem'");
 }
 
 void comandos_serial_atualizar() {

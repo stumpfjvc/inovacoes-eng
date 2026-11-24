@@ -10,8 +10,12 @@
   // ---------- Constantes ----------
   var ESCALA_MIN = 20;            // medidor e gráfico: 20 a 110 dB
   var ESCALA_MAX = 110;
-  var ONLINE_MS = 30 * 1000;      // visto nos últimos 30 s = Online
-  var ATUALIZAR_MS = 3 * 1000;    // cartões a cada 3 s
+  // A placa envia a cada 1 s (NUVEM_INTERVALO_MS no firmware). Com 10 s de folga,
+  // um ou outro envio perdido não derruba o selo "Online".
+  // Se o aparelho for configurado para enviar a cada 10 s, suba ONLINE_MS para 30 s
+  // (senão ele aparece Offline entre um envio e outro).
+  var ONLINE_MS = 10 * 1000;      // visto nos últimos 10 s = Online
+  var ATUALIZAR_MS = 1 * 1000;    // cartões a cada 1 s (pausa com a aba em segundo plano)
   var GRAFICO_MS = 10 * 1000;     // gráfico a cada 10 s
   var JANELA_GRAFICO_MS = 30 * 60 * 1000;
   var BURACO_MS = 60 * 1000;      // sem leitura por mais de 1 min: a linha do gráfico é interrompida
@@ -323,7 +327,7 @@
     buscandoCartoes = true;
     sb.from("aparelhos").select(COLUNAS_APARELHO).order("criado_em", { ascending: true })
       .then(function (r) {
-        if (r.error) return;    // falha passageira: tenta de novo em 3 s
+        if (r.error) return;    // falha passageira: tenta de novo no próximo ciclo (1 s)
         var lista = r.data || [];
         var vistos = {};
         for (var i = 0; i < lista.length; i++) {

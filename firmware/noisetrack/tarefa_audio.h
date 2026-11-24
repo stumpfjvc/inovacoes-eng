@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include "estado.h"
 #include "regra.h"
+#include "maximo_janelas.h"
 
 // Tudo o que a tarefa publica. O loop() e, depois, a página leem uma CÓPIA.
 struct EstadoCompartilhado {
@@ -35,6 +36,12 @@ bool tarefa_audio_iniciar();
 
 // Devolve uma cópia do estado, tirada com a trava fechada.
 EstadoCompartilhado tarefa_audio_copiar();
+
+// Devolve o MAIOR nível das janelas publicadas desde a última chamada e começa
+// a contar de novo. Quem chama (a nuvem, a cada envio) recebe só o que veio
+// depois da sua chamada anterior. Pega a mesma trava de tarefa_audio_copiar(),
+// por tempo curtíssimo; a tarefa de áudio só ganha uma comparação por janela.
+LeituraMaxima tarefa_audio_pegar_maximo();
 
 // Troca o limite e o X usados pela regra (Parte 8 e página).
 // Valores fora da faixa do config.h são recusados (devolve false).
