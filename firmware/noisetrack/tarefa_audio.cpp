@@ -17,6 +17,8 @@
 static SemaphoreHandle_t   trava = nullptr;
 static EstadoCompartilhado compartilhado;
 static TaskHandle_t        tarefa = nullptr;
+// Maior nível desde a última pergunta da nuvem. Fica protegido pela mesma trava.
+static MaximoJanelas       maximo;
 
 // Equivalente a "synchronized (trava) { ... }".
 static void travar()    { xSemaphoreTake(trava, portMAX_DELAY); }
@@ -80,6 +82,10 @@ static void publicar(const NivelDb& n, const RegraSaida& r, uint32_t falhas) {
   }
   compartilhado.contadorJanelas++;
   compartilhado.falhasSeguidas = falhas;
+  // Uma comparação, com a trava que já está fechada. Janela do apito (em que se
+  // republica a última da pausa) e aquecimento (sem sinal) entram do jeito que
+  // foram publicadas: o apito do próprio buzzer nunca vira "pico" no site.
+  maximo.somar(n.dbCombinado, n.validoCombinado);
   destravar();
 }
 
@@ -265,6 +271,7 @@ bool tarefa_audio_iniciar() {
   compartilhado.limiteDb     = LIMITE_PADRAO_DB;
   compartilhado.tempoXs      = TEMPO_X_PADRAO_S;
   compartilhado.ultimoEvento = EventoRegra::NENHUM;
+  maximo = MaximoJanelas();
 
   trava = xSemaphoreCreateMutex();
   if (trava == nullptr) return false;
@@ -288,6 +295,14 @@ EstadoCompartilhado tarefa_audio_copiar() {
   const EstadoCompartilhado copia = compartilhado;   // copia a struct inteira
   destravar();
   return copia;
+}
+
+LeituraMaxima tarefa_audio_pegar_maximo() {
+  if (trava == nullptr) return LeituraMaxima{0.0f, false, 0};   // tarefa ainda não criada
+  travar();
+  const LeituraMaxima r = maximo.pegar();
+  destravar();
+  return r;
 }
 
 bool tarefa_audio_definir_config(float limiteDb, int tempoXs) {

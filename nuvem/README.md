@@ -165,9 +165,32 @@ Mensagens de erro que as funções podem devolver: `aparelho_invalido`,
 `codigo_invalido`, `nao_autenticado`, `limite_invalido`, `segundos_invalido`,
 `aparelho_nao_encontrado`. O site traduz cada uma para uma frase amigável.
 
+## O firmware na nuvem
+
+O firmware (`firmware/noisetrack/nuvem.cpp`) chama a `aparelho_sync` a cada 1 s
+(`NUVEM_INTERVALO_MS`, para demonstração; use 10 s no dia a dia), com o Wi-Fi do
+local conectado. O histórico guarda no máximo 1 leitura a cada 10 s de qualquer
+jeito (regra da função, no servidor). O passo a passo para ligar, o custo de
+tráfego e como voltar para 10 s estão na etapa (k) do
+`firmware/noisetrack/GUIA_BANCADA.md`. Resumo:
+
+- A **URL** e a chave **pública** vão no `config_local.h` (`NUVEM_URL` e
+  `NUVEM_CHAVE_PUBLICA`); a **chave do aparelho** vai no `secrets.h`
+  (`NUVEM_CHAVE_APARELHO`). Os dois arquivos ficam fora do Git.
+- **A nuvem manda:** se o limite/segundos do banco for diferente do aparelho,
+  vale o do banco, e o aparelho grava na memória dele.
+- O alarme local não depende da nuvem: sem internet, ele funciona igual, e o
+  aparelho tenta de novo em 10, 20, 40 e até 60 s.
+
+> ⚠️ **Conexão ainda NÃO verificada.** Por enquanto o firmware usa HTTPS sem
+> conferir o certificado do servidor (`NUVEM_TLS_VALIDAR 0`) e avisa isso no
+> Serial. A conexão é criptografada, mas alguém que controle a rede do local
+> poderia se passar pelo Supabase, ver a chave do aparelho e mandar um limite
+> falso. Para conferir o certificado, siga as instruções do
+> `firmware/noisetrack/nuvem_ca.h` e use `NUVEM_TLS_VALIDAR 1`.
+
 ## Ainda não feito
 
-- O **firmware ainda não chama** a `aparelho_sync`. Até isso existir, use o curl
-  acima para ver o site funcionando.
+- A verificação do certificado (TLS) vem desligada: ver o aviso acima.
 - Não há limite de tentativas no pareamento. Com códigos de 8 caracteres
   aleatórios, adivinhar é muito difícil, mas evite códigos óbvios.

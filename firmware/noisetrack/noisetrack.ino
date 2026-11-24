@@ -15,12 +15,14 @@
 #include "comandos_serial.h"
 #include "rede.h"
 #include "web.h"
+#include "nuvem.h"
 #include "teste_nivel_db.h"
 #include "teste_regra.h"
 #include "teste_tarefa.h"
 #include "teste_prefs.h"
 #include "teste_wifi.h"
 #include "teste_web.h"
+#include "teste_nuvem.h"
 // Sempre incluído (só declarações): o PlatformIO cria protótipos das funções do
 // .ino sem olhar os #if, e eles precisam conhecer o AcumuladorCalib.
 #include "calibracao.h"
@@ -150,10 +152,14 @@ void setup() {
 #if TESTE_WEB
   teste_web_rodar();        // só a parte pura da página; não usa a rede
 #endif
+#if TESTE_NUVEM
+  teste_nuvem_rodar();      // só a parte pura da nuvem; não usa a rede
+#endif
 
   // Wi-Fi: só prepara. A conexão acontece aos poucos, em rede_atualizar().
   rede_iniciar();
   web_iniciar();            // a página só liga quando o Wi-Fi do local conectar
+  nuvem_iniciar();          // depois de rede_iniciar (usa o ID); desliga sozinha se faltar chave
 
   comandos_serial_iniciar();
 #if CALIBRACAO
@@ -183,5 +189,6 @@ void loop() {
   comandos_serial_atualizar();   // pode gravar na flash: por isso fica aqui, e não na tarefa
   rede_atualizar(agora);         // Wi-Fi, portal, mDNS e NTP: nunca espera a rede
   web_atualizar(agora);          // página, /status, /config e WebSocket
+  nuvem_atualizar(agora);        // aplica o limite/X vindo da nuvem (o envio roda na tarefa dela)
   teste_tarefa_verificar(agora);
 }

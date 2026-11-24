@@ -68,6 +68,23 @@
 // RMS em dBFS e o canal lido. 0 = desligado (padrão do config.h).
 #define DIAG_MIC 0
 
+// ---------- Nuvem (Supabase) ----------
+// Endereço do projeto e chave PÚBLICA (painel do Supabase -> Project Settings -> API).
+// São os mesmos valores do docs/config.js do site. NUNCA a service_role/secret.
+// A chave SECRETA do aparelho vai no secrets.h (NUVEM_CHAVE_APARELHO).
+// Com os modelos abaixo, a nuvem fica desligada (o alarme local funciona igual).
+#define NUVEM_URL           "COLE_AQUI_A_URL_DO_PROJETO"
+#define NUVEM_CHAVE_PUBLICA "COLE_AQUI_A_CHAVE_PUBLICA"
+// 0 = HTTPS sem conferir o certificado (aviso no Serial). 1 = confere com o
+// certificado do nuvem_ca.h (instruções lá dentro).
+// #define NUVEM_TLS_VALIDAR 0
+// 0 = desliga a nuvem por completo (nem compila o HTTPS).
+// #define NUVEM_ATIVA 1
+// Intervalo entre envios, em ms. Padrão do config.h: 1000 (quase em tempo real,
+// para demonstração). 10000 = o ritmo do histórico, com um décimo do tráfego.
+// Se mudar para 10000, mude também o ONLINE_MS do docs/app.js para 30 s.
+// #define NUVEM_INTERVALO_MS 10000
+
 // ---------- Autotestes (rodam uma vez na partida) ----------
 // Na bancada, deixe todos em 1. Antes de instalar: TESTE_PREFS 0 (ele grava
 // na flash a cada partida); os outros podem ir a 0 para a partida ser mais rápida.
@@ -77,3 +94,4 @@
 #define TESTE_PREFS    1
 #define TESTE_WIFI     1
 #define TESTE_WEB      1
+#define TESTE_NUVEM    1

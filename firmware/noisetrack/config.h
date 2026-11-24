@@ -263,3 +263,63 @@ constexpr uint32_t WEB_BLOQUEIO_MS    = 60000;
 #ifndef TESTE_WEB
 #define TESTE_WEB 1
 #endif
+
+// ================== NUVEM (Supabase) ==================
+// A cada NUVEM_INTERVALO_MS, com o Wi-Fi do local conectado, o aparelho manda o
+// MAIOR nível das janelas desde o último envio e o estado atual para a função
+// aparelho_sync, e recebe o limite e o X. A conexão HTTPS é reaproveitada.
+// A NUVEM MANDA: se o limite/X de lá for diferente do daqui, vale o de lá (e é
+// gravado na memória). Roda numa tarefa própria, de baixa prioridade: o alarme
+// local (microfone, regra, LEDs, buzzer) nunca espera pela nuvem.
+// 1 = liga (se URL e chaves estiverem preenchidas) | 0 = desliga e nem compila.
+#ifndef NUVEM_ATIVA
+#define NUVEM_ATIVA 1
+#endif
+// Endereço e chave PÚBLICA do projeto: preencher no config_local.h.
+// Enquanto ficarem com estes modelos, a nuvem fica desligada (avisa no Serial).
+#ifndef NUVEM_URL
+#define NUVEM_URL "COLE_AQUI_A_URL_DO_PROJETO"
+#endif
+#ifndef NUVEM_CHAVE_PUBLICA
+#define NUVEM_CHAVE_PUBLICA "COLE_AQUI_A_CHAVE_PUBLICA"
+#endif
+// (A chave SECRETA do aparelho, NUVEM_CHAVE_APARELHO, fica no secrets.h.)
+
+// 1 = confere o certificado do servidor com o CA raiz do nuvem_ca.h.
+// 0 = HTTPS criptografado, mas SEM conferir quem é o servidor (aviso no Serial).
+#ifndef NUVEM_TLS_VALIDAR
+#define NUVEM_TLS_VALIDAR 0
+#endif
+
+// Intervalo entre envios.
+//   1000  = quase em tempo real (demonstração com um aparelho só). Padrão.
+//   10000 = o ritmo do histórico: o banco guarda 1 leitura a cada 10 s de
+//           qualquer jeito, e o tráfego cai 10 vezes.
+// Para voltar a 10 s, ponha no config_local.h:  #define NUVEM_INTERVALO_MS 10000
+// (custo de tráfego e passo a passo: GUIA_BANCADA.md, etapa k).
+#ifndef NUVEM_INTERVALO_MS
+#define NUVEM_INTERVALO_MS 1000
+#endif
+// Depois de uma falha a espera dobra (1, 2, 4, 8... s) até este teto, e volta
+// ao NUVEM_INTERVALO_MS no primeiro envio que der certo.
+constexpr uint32_t NUVEM_ESPERA_MAX_MS = 60000;
+// Timeouts curtos: o alarme local não espera por eles (a nuvem tem tarefa
+// própria), mas um envio preso atrasa os seguintes (os ciclos perdidos são pulados).
+constexpr uint32_t NUVEM_TIMEOUT_MS          = 4000;   // abrir a conexão e o aperto de mão TLS
+constexpr uint32_t NUVEM_TIMEOUT_RESPOSTA_MS = 2000;   // esperar a resposta numa conexão já aberta
+static_assert(NUVEM_TIMEOUT_MS <= 5000 && NUVEM_TIMEOUT_RESPOSTA_MS <= 5000,
+              "timeouts da nuvem devem ser curtos (<= 5 s)");
+static_assert(NUVEM_INTERVALO_MS >= 250 && NUVEM_INTERVALO_MS <= NUVEM_ESPERA_MAX_MS,
+              "NUVEM_INTERVALO_MS deve ficar entre 250 ms e NUVEM_ESPERA_MAX_MS (60 s)");
+
+// Tarefa da nuvem: prioridade 1 (abaixo da tarefa de áudio, que é 2) e no
+// núcleo 0, junto do Wi-Fi; a tarefa de áudio fica sozinha no núcleo 1.
+// A pilha é grande porque o HTTPS (mbedTLS) gasta bastante.
+constexpr uint32_t    PILHA_TAREFA_NUVEM      = 12288;
+constexpr UBaseType_t PRIORIDADE_TAREFA_NUVEM = 1;
+constexpr BaseType_t  NUCLEO_TAREFA_NUVEM     = 0;
+
+// Autoteste da parte pura da nuvem (JSON, resposta, estados, espera crescente).
+#ifndef TESTE_NUVEM
+#define TESTE_NUVEM 1
+#endif

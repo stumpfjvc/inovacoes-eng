@@ -6,6 +6,7 @@
 //   wifi apagar -> apaga a rede salva (liga o AP de setup)
 //   web         -> mostra o endereço da página, os clientes e a senha de configuração
 //   etiqueta    -> mostra a etiqueta: senha do AP de setup e senha Config
+//   nuvem       -> mostra se a nuvem está ligada, o último resultado e a config recebida
 // Só com FONTE_SIMULADA = 1:
 //   80 / auto   -> força o nível simulado (20 a 120 dB) ou volta ao automático
 // Com COMANDOS_SERIAL = 0, nada é lido do Serial.

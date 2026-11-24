@@ -67,6 +67,8 @@ troque o texto de `WIFI_AP_SEGREDO` por um texto longo e aleatório.
   diferentes, porque o MAC muda.
 - O `secrets.h` está no `.gitignore`. Antes de qualquer commit, confira que ele
   **não** aparece no `git status`.
+- Para a **nuvem**, o `secrets.h` também guarda a chave secreta desta placa,
+  `NUVEM_CHAVE_APARELHO`. Ela é diferente em cada placa: veja a etapa (k).
 
 ### 2.2 `config_local.h` (a configuração da sua placa)
 
@@ -97,7 +99,9 @@ Chaves do `config_local.h` e o valor do exemplo da bancada:
 | `BUZZER_ATIVO_EM_BAIXO` | `1` | O nosso buzzer é de nível baixo. Só troque para `0` se ele apitar sempre e calar no alerta. |
 | `COMANDOS_SERIAL` | `1` | `0` desliga a leitura de comandos no Serial (opcional, ao instalar). |
 | `CALIBRACAO` | `0` | `1` durante a calibração (seção 5). |
-| `TESTE_NIVEL_DB`, `TESTE_REGRA`, `TESTE_TAREFA`, `TESTE_PREFS`, `TESTE_WIFI`, `TESTE_WEB` | `1` | Ao instalar: `TESTE_PREFS 0` (seção 6). |
+| `NUVEM_URL` / `NUVEM_CHAVE_PUBLICA` | modelos `COLE_AQUI_...` | Para usar a nuvem: a URL e a chave **pública** do projeto (etapa k). |
+| `NUVEM_INTERVALO_MS` | `1000` (não precisa estar no arquivo) | Tempo entre envios à nuvem. `1000` = quase em tempo real (demonstração); **`10000` para uso normal**, com um décimo do tráfego (etapa k). |
+| `TESTE_NIVEL_DB`, `TESTE_REGRA`, `TESTE_TAREFA`, `TESTE_PREFS`, `TESTE_WIFI`, `TESTE_WEB`, `TESTE_NUVEM` | `1` | Ao instalar: `TESTE_PREFS 0` (seção 6). |
 
 > `BUZZER_ATIVO_EM_BAIXO` continua `0` no `config.h` porque o Wokwi depende
 > disso. Na bancada, quem diz `1` é o `config_local.h`.
@@ -128,6 +132,7 @@ Com `COMANDOS_SERIAL 1` (padrão), digite no monitor e aperte Enter:
 | `wifi` | Estado da rede, IP e horário | Placa real e simulação |
 | `wifi apagar` | Apaga a rede salva (o AP de setup liga) | Placa real e simulação |
 | `web` | Endereço da página, clientes e senha de configuração | Placa real e simulação |
+| `nuvem` | Se a nuvem está ligada, o último resultado, há quanto tempo foi o último sucesso e o limite/X recebido (etapa k) | Placa real e simulação |
 | `limite 70` | Muda e grava o limite (30 a 100 dB) | Placa real e simulação |
 | `x 8` | Muda e grava o tempo X (1 a 60 s) | Placa real e simulação |
 | `80` / `auto` | Força o nível simulado / volta ao automático | **Só com `FONTE_SIMULADA 1`** |
@@ -135,8 +140,8 @@ Com `COMANDOS_SERIAL 1` (padrão), digite no monitor e aperte Enter:
 Na partida aparece a lista do que existe na configuração gravada:
 
 ```
-[serial] comandos: um nivel (20 a 120 dB) ou 'auto' | 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta'   <- FONTE_SIMULADA 1
-[serial] comandos: 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta'                                        <- FONTE_SIMULADA 0
+[serial] comandos: um nivel (20 a 120 dB) ou 'auto' | 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta' | 'nuvem'   <- FONTE_SIMULADA 1
+[serial] comandos: 'limite N' | 'x N' | 'wifi' | 'wifi apagar' | 'web' | 'etiqueta' | 'nuvem'                                        <- FONTE_SIMULADA 0
 [serial] comandos desligados (COMANDOS_SERIAL 0)
 ```
 
@@ -594,6 +599,178 @@ sozinha.
 passa de 65 dB, o aparelho pode estar medindo baixo: faça a calibração antes.
 Oscilações entre 62 e 65 dB não zeram a contagem (`HISTERESE_DB` = 3), e o
 alerta só acaba depois de `HOLD_MS` (2 s) abaixo de 62 dB.
+
+### (k) Nuvem: mandar o nível para o site
+
+**O que é:** com o Wi-Fi do local conectado, a cada 1 s (`NUVEM_INTERVALO_MS`)
+o aparelho manda para o banco no Supabase o **maior nível (dB)** que o microfone
+mediu desde o envio anterior e o **estado de agora** (calmo, contando, alerta ou
+sem sinal), e o site (`docs/`) mostra. Na volta, o banco devolve o limite e o X.
+
+- **Por que o maior:** o microfone mede a cada 0,125 s e o envio é a cada 1 s.
+  Mandar só a última medida perderia um pico curto (uma palma). O apito do
+  próprio buzzer não conta como pico: a medição já o descarta.
+- **A conexão fica aberta entre os envios** (keep-alive). Só o primeiro envio
+  paga o aperto de mão do HTTPS (1 a 3 s); os seguintes levam uma fração de
+  segundo. Se a conexão cair, o aparelho reconecta sozinho. Há **um envio de cada
+  vez**: se um demorar (timeout curto: 4 s para conectar, 2 s para a resposta),
+  os ciclos perdidos são pulados em vez de acumular.
+- Com falhas, a espera cresce (1, 2, 4, 8... até 60 s) e volta a 1 s no primeiro
+  envio que der certo.
+
+> **A nuvem manda.** Se o limite/X que vier de lá for diferente do que está no
+> aparelho, vale o de lá, e ele é gravado na memória. Por isso, com a nuvem
+> ligada, uma mudança feita na página local (ou com `limite N` no Serial) é
+> desfeita em cerca de 1 s. Para mudar de vez, mude no site.
+
+> **O alarme local não depende da nuvem.** A nuvem roda numa tarefa separada,
+> de prioridade mais baixa e em outro núcleo do processador. Sem internet, com
+> o servidor fora do ar ou com a chave errada, o microfone, a regra, os LEDs e
+> o buzzer funcionam igual.
+
+**Fazer (uma vez por placa):**
+
+1. **Descubra o ID da placa:** grave o firmware, abra o monitor e digite
+   `etiqueta`. A linha `[etiqueta] ID: noisetrack-xxxxxx` mostra o ID.
+2. **Cadastre a placa no banco** (no Git Bash, na pasta do projeto):
+   `bash nuvem/ferramentas/novo_aparelho.sh noisetrack-xxxxxx`.
+   O script copia um SQL para a área de transferência: no Supabase, abra o
+   **SQL Editor**, cole, clique em **Run** e apague a query do histórico.
+   Anote o **código de pareamento** que aparece na tela (vai na etiqueta).
+3. **Cole a chave do aparelho no `secrets.h`:** abra o arquivo
+   `C:\Users\<voce>\.noisetrack\noisetrack-xxxxxx.chave` no Bloco de Notas,
+   copie a linha e acrescente no `secrets.h`:
+   ```c
+   #define NUVEM_CHAVE_APARELHO "cole-aqui-a-chave-de-48-caracteres"
+   ```
+   Essa chave é **secreta**: não mande em mensagem, print nem Git.
+4. **Coloque a URL e a chave pública no `config_local.h`** (os mesmos valores
+   do `docs/config.js` do site; painel do Supabase → Project Settings → API):
+   ```c
+   #define NUVEM_URL           "https://SEU-PROJETO.supabase.co"
+   #define NUVEM_CHAVE_PUBLICA "sb_publishable_..."
+   ```
+   Use a chave **publishable** (ou "anon"). **Nunca** a `service_role`/secret:
+   o firmware recusa e avisa.
+5. Compile e grave. O Wi-Fi do local precisa estar configurado (etapa g).
+
+**Serial na partida:**
+```
+[nuvem] ligada: SEU-PROJETO.supabase.co | ID noisetrack-xxxxxx | chave publica sb_publishab...(46 caracteres) | a cada 1000 ms com o Wi-Fi conectado
+[nuvem] AVISO: HTTPS SEM verificacao do certificado (NUVEM_TLS_VALIDAR 0): ...
+```
+Depois que o Wi-Fi conecta:
+```
+[nuvem] ok: enviado e recebido limite 65 dB, X 5 s (de novo a cada 1000 ms)
+```
+Os envios seguintes que dão certo **não** imprimem nada (para não encher o
+Serial). Só aparecem as falhas e a volta ao normal.
+
+**Comando `nuvem`** (digite no monitor):
+```
+[nuvem] ligada | ID noisetrack-xxxxxx | servidor SEU-PROJETO.supabase.co | TLS SEM verificacao (NUVEM_TLS_VALIDAR 0)
+[nuvem] Wi-Fi do local: conectado | ultimo resultado: ok (HTTP 200) ha 3 s
+[nuvem] ultimo sucesso: ha 0 s | espera atual: 1.0 s | tentativas 120, sucessos 120
+[nuvem] conexoes TLS abertas: 1 (com keep-alive fica perto de 1) | ultimo envio levou 240 ms | ciclos pulados: 0 | intervalo 1000 ms
+[nuvem] configuracao recebida: limite 65 dB, X 5 s | em uso: limite 65 dB, X 5 s
+[nuvem] pilha livre minima da tarefa: ... de 12288 bytes | memoria livre ... (minima ...)
+```
+Como ler a linha nova (números de exemplo):
+- **conexoes TLS abertas:** com tudo certo fica em **1** (ou poucas, se o Wi-Fi
+  ou o servidor caíram). Se **subir uma por segundo**, a conexão não está sendo
+  reaproveitada: o servidor está fechando a cada resposta.
+- **ultimo envio levou:** algumas centenas de ms. Perto de 2000 ms é a resposta
+  demorando (o limite é 2 s).
+- **ciclos pulados:** deve ficar em 0 ou crescer devagar. Se crescer rápido, a
+  internet está lenta demais para 1 s: use 10 s (abaixo).
+- **memoria livre (minima):** a conexão aberta segura uma boa parte da memória
+  o tempo todo. Anote a **mínima** depois de alguns minutos (com a página aberta
+  em algum celular também) e compare se ela se mantém estável.
+
+**Conferir no site:**
+1. Abra o site (a página do `docs/`), entre com seu e-mail e senha.
+2. Digite o **código de pareamento** do passo 2. A placa aparece na lista.
+3. O nível e o estado mudam a cada ~1 s (bata palmas ou fale perto). O selo
+   fica **Online** enquanto o último envio tiver menos de 10 s.
+4. Mude o limite no site (por exemplo, 70). Em cerca de 1 s o Serial mostra
+   `[nuvem] configuracao da nuvem aplicada: limite 65 -> 70 dB, X 5 -> 5 s (gravada)`
+   e o comando `nuvem` mostra `em uso: limite 70 dB`.
+
+**Pronto quando:** o comando `nuvem` mostra `ultimo resultado: ok (HTTP 200)` e o
+site mostra o nível da placa mudando.
+
+**Se não aparecer:**
+- `[nuvem] desligada: NUVEM_URL ainda e o modelo ...` (ou `NUVEM_CHAVE_PUBLICA`,
+  ou `NUVEM_CHAVE_APARELHO ausente ...`): falta preencher o passo 3 ou 4. Se já
+  preencheu, faça **Clean** e compile de novo.
+- `[nuvem] desligada: NUVEM_CHAVE_PUBLICA e a chave de ADMINISTRADOR ...`: você
+  colou a `service_role`/secret. Troque pela publishable e, por segurança, gere
+  uma nova secreta no painel.
+- `[nuvem] falha: aparelho_invalido (HTTP 400)`: o banco não reconhece a chave.
+  Confira se a linha do `secrets.h` é a mesma do arquivo `.chave` e se o SQL do
+  passo 2 foi rodado. Se rodou o `novo_aparelho.sh` de novo, a chave mudou: cole
+  a nova no `secrets.h` e grave.
+- `[nuvem] falha: sem conexao | proxima tentativa em 2.0 s`: sem internet no
+  local, ou a URL está errada. As tentativas ficam mais espaçadas (1, 2, 4, 8,
+  16, 32, até 60 s) e voltam a cada 1 s no primeiro sucesso.
+- `ultimo resultado: ainda nao tentou`: o Wi-Fi do local ainda não conectou
+  (no portal do AP de setup a nuvem não tenta).
+
+#### Tempo real (1 s): custo de tráfego e como voltar para 10 s
+
+O padrão de **1 s** existe para **demonstração com um aparelho só**. Mandar dez
+vezes mais seguido custa dez vezes mais tráfego. Estimativa pelo tamanho dos
+pacotes (**calculada, não medida**; o tráfego real depende do Supabase e do
+HTTPS):
+
+- **Cada envio da placa** (pedido + resposta, já com o HTTPS): cerca de
+  **1 a 1,5 KB**. Os cabeçalhos da resposta do Supabase são a maior parte; o
+  dado em si tem pouco mais de 100 bytes.
+- **Cada aba do site aberta** (atualiza o cartão a cada 1 s e o gráfico a cada
+  10 s): cerca de **2 KB por segundo** recebidos. Aba em segundo plano pausa.
+
+| Quem | A cada 1 s | A cada 10 s |
+|---|---|---|
+| Placa ligada o dia todo | ~1,2 KB/s: **~4 MB por hora, ~100 MB por dia, ~3 GB por mês** | ~0,12 KB/s: ~0,4 MB por hora, ~10 MB por dia, ~0,3 GB por mês |
+| Cada aba do site aberta | ~7 MB por hora (com o site também em 1 s) | (ver o passo 2 abaixo) |
+
+O plano gratuito do Supabase tem um **limite mensal de tráfego de saída**.
+Confira o número atual em **Settings → Usage**, no painel: **uma placa em 1 s o
+mês inteiro já usa uma parte grande dele**, e abas deixadas abertas somam por
+cima. Por isso: **use 1 s só durante a demonstração e volte para 10 s depois.**
+
+**Como voltar para 10 s** (dois lugares, os dois precisam mudar):
+
+1. **Firmware.** No `config_local.h` da placa, acrescente
+   `#define NUVEM_INTERVALO_MS 10000` e grave de novo. Não mude o `config.h`.
+2. **Site.** No `docs/app.js`, troque `ONLINE_MS` para `30 * 1000` (senão a
+   placa aparece **Offline** entre um envio e outro, já que envia a cada 10 s)
+   e, se quiser, `ATUALIZAR_MS` para `3 * 1000`. Depois publique o site de novo.
+
+O que **não** muda entre 1 s e 10 s:
+- **O histórico** (o gráfico dos últimos 30 minutos) continua com no máximo
+  **1 ponto a cada 10 s**: essa regra é do banco (`aparelho_sync`), e o
+  `schema.sql` não foi alterado.
+- **O alarme local** (LED e buzzer) nunca depende da nuvem.
+
+O que **muda** de significado com 10 s: o nível enviado é o **maior das janelas
+dos últimos 10 s**, não o do instante. O cartão e o histórico passam a mostrar o
+pico de cada 10 s (um som curto e alto aparece, mas o valor fica um pouco acima
+da média do período).
+
+Dois detalhes do site com 10 s de "Online": ele compara a hora do último envio
+(do servidor) com a **hora do aparelho em que o site está aberto**. Se o relógio
+do computador ou celular estiver **adiantado em mais de uns 10 s**, a placa pode
+aparecer Offline mesmo enviando. Relógios acertados pela internet (o normal) não
+dão problema.
+
+**Sobre o aviso "SEM verificacao do certificado"** (`NUVEM_TLS_VALIDAR 0`): a
+conversa com o servidor é criptografada, então quem estiver na mesma rede não
+lê a chave do aparelho. Mas o aparelho não confere se do outro lado está mesmo
+o Supabase. Alguém que controle a rede (um roteador mal-intencionado, por
+exemplo) poderia se passar pelo servidor, ver a chave do aparelho e mandar um
+limite/X falso. Para fechar essa porta: siga as instruções do `nuvem_ca.h`
+(copiar o certificado raiz do site) e use `NUVEM_TLS_VALIDAR 1`.
 
 ---
 
