@@ -10,25 +10,28 @@
 
 ### Backlog
 
-- [ ] Calibração com APP
-- [ ] Impressão 3D
-- [ ] Teste de alimentação pela tomada (USB)
-- [ ] Testes em campo
 
 ### To-Do (A Fazer)
 
-- [ ] Modelagem 3D do case
+- [ ] Impressão 3D
 
 ### Doing (Em Andamento)
 
-- [ ] Montagem do circuito
-- [ ] Programação do circuito
-- [ ] Programação do APP
+- [ ] Teste de alimentação pela tomada (USB)
 - [ ] Documentação
 
 ### Done (Concluído)
 
 - [x] Compra e pedido dos componentes
+- [x] Calibração com site
+- [x] Testes em campo
+- [x] Modelagem 3D do case
+- [x] Montagem do circuito
+- [x] Programação do circuito
+- [x] Programação do site
+- [x] Banco de dados na nuvem (Supabase)
+- [x] Integração do aparelho com a nuvem
+- [x] Configuração do Wi-Fi pelo próprio aparelho
 
 ### Log
 
